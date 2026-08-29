@@ -1,0 +1,15 @@
+# SERVER ONLY. Never commit real values.
+NODE_ENV=staging
+SUPABASE_URL=https://YOUR-STAGING-PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
+SUPABASE_SERVICE_ROLE_KEY=REPLACE_SERVER_ONLY
+OPENAI_API_KEY=REPLACE_SERVER_ONLY
+OPENAI_MODEL=gpt-5.6-terra
+AI_PROVIDER_MODE=openai
+BILLING_DEMO_MODE=false
+CORS_ORIGINS=
+TRUST_PROXY_HOPS=1
+
+# Founder bootstrap only after the founder has deliberately signed in once.
+FOUNDER_EMAIL=founder@example.com
+FOUNDER_LABEL=AngelOS Founder

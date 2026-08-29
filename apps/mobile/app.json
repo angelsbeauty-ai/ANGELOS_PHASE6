@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "AngelOS",
+    "slug": "angelos",
+    "scheme": "angelos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow AngelOS to access photos and videos only when you choose business media to import.",
+          "cameraPermission": "Allow AngelOS to use the camera only when you choose to capture business media.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.angelos.app"
+    },
+    "android": {
+      "package": "com.angelos.app"
+    }
+  }
+}

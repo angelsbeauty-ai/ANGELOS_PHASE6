@@ -1,0 +1,28 @@
+-- Run only after Angel has deliberately created/signed into the STAGING Supabase Auth project.
+-- Replace the placeholder with the exact auth.users UUID shown for that staging account.
+-- Do not use an email address as an authorization key.
+
+begin;
+
+do $$
+declare
+  v_user_id uuid := '00000000-0000-0000-0000-000000000000'::uuid;
+begin
+  if v_user_id = '00000000-0000-0000-0000-000000000000'::uuid then
+    raise exception 'Replace the placeholder founder UUID before running';
+  end if;
+
+  if not exists (select 1 from auth.users where id = v_user_id) then
+    raise exception 'Founder UUID is not a staging Auth user';
+  end if;
+
+  insert into public.platform_founders(user_id, label)
+  values (v_user_id, 'Angel — Founder')
+  on conflict (user_id) do update set label = excluded.label;
+end $$;
+
+commit;
+
+select pf.user_id, pf.label, pf.created_at
+from public.platform_founders pf
+where pf.label = 'Angel — Founder';

@@ -1,0 +1,38 @@
+{
+  "name": "angelos",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm --workspace @angelos/mobile run start",
+    "dev:api": "npm --workspace @angelos/api run start:dev",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify:static": "node scripts/verify-static.mjs && node scripts/verify-migrations.mjs && node scripts/verify-staging-contract.mjs && node scripts/verify-no-secrets.mjs && node scripts/verify-deployment-pack.mjs",
+    "build:api": "npm --workspace @angelos/api run build",
+    "check": "npm run verify:static && npm run typecheck && npm run build:api",
+    "verify:migrations": "node scripts/verify-migrations.mjs",
+    "verify:staging": "node scripts/verify-staging-contract.mjs",
+    "test:staging": "node scripts/staging-smoke.mjs",
+    "check:staging": "npm run check && npm run verify:staging && npm run test:staging",
+    "verify:no-secrets": "node scripts/verify-no-secrets.mjs",
+    "verify:deployment-env": "node scripts/verify-deployment-env.mjs",
+    "bootstrap:founder": "node scripts/bootstrap-founder.mjs",
+    "verify:founder": "node scripts/verify-staging-founder.mjs",
+    "verify:mobile-build-env": "node scripts/verify-mobile-build-env.mjs",
+    "verify:mobile-sdk": "node scripts/verify-mobile-sdk.mjs",
+    "verify:mobile-release": "npm run verify:mobile-sdk && npm run verify:mobile-build-env && npm run verify:ios-release-config",
+    "upgrade:expo57": "bash scripts/upgrade-expo-sdk57.sh",
+    "verify:ios-release-config": "node scripts/verify-ios-release-config.mjs",
+    "prepare:first-ios-build": "bash scripts/prepare-first-ios-build.sh",
+    "verify:eas-project-link": "node scripts/verify-eas-project-link.mjs",
+    "verify:deployment-pack": "node scripts/verify-deployment-pack.mjs",
+    "test:post-deploy": "node scripts/post-deploy-smoke.mjs",
+    "prepare:networked-release": "bash scripts/prepare-networked-release.sh"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

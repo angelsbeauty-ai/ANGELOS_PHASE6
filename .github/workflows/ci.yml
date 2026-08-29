@@ -1,0 +1,21 @@
+name: angelos-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --workspaces --include-workspace-root
+      - run: npm run typecheck
+      - run: npm --workspace @angelos/api run build
+      - run: npm run verify:static

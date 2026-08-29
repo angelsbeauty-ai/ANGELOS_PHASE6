@@ -1,0 +1,34 @@
+name: angelos-staging-verification
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install workspace dependencies
+        run: npm install --workspaces --include-workspace-root
+      - name: Static and migration checks
+        run: npm run verify:static && npm run verify:migrations && npm run verify:staging
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build API
+        run: npm run build:api
+      - name: Staging smoke / tenant isolation
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          STAGING_TEST_EMAIL_A: ${{ secrets.STAGING_TEST_EMAIL_A }}
+          STAGING_TEST_PASSWORD_A: ${{ secrets.STAGING_TEST_PASSWORD_A }}
+          STAGING_TEST_EMAIL_B: ${{ secrets.STAGING_TEST_EMAIL_B }}
+          STAGING_TEST_PASSWORD_B: ${{ secrets.STAGING_TEST_PASSWORD_B }}
+        run: npm run test:staging
