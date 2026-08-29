@@ -173,10 +173,8 @@ const styles = StyleSheet.create({
   },
   actionLink: {
     marginTop: ui.spacing.xs,
-    textDecorationLine: 'none'
   },
   rowLink: {
-    textDecorationLine: 'none'
   },
   chevron: {
     color: ui.colors.gold,
@@ -199,6 +197,5 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.elevated,
     fontSize: 14,
     fontWeight: '700',
-    textDecorationLine: 'none'
   }
 });
