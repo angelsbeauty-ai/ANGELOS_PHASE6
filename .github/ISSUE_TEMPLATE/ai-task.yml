@@ -1,0 +1,17 @@
+name: AI Task
+description: File a task for the AI pipeline to plan, build, review, and merge automatically.
+title: "[AI Task] "
+labels: ["ai-task"]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: What do you need done?
+      description: Describe the outcome you want. Be as specific or as loose as you like — the planner will scope it and post a plan back on this issue before any code is written.
+      placeholder: e.g. "Add a loading spinner to the workspace switcher while it fetches data."
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        This will be picked up automatically within a few minutes. You'll see a plan posted here first, then a linked pull request. You're only pinged again if something genuinely needs your input (credentials, a destructive action, a financial/business decision, or if it gets stuck).
