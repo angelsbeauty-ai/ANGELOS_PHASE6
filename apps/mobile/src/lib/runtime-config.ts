@@ -6,6 +6,10 @@ function requireReleaseValue(name: string, value: string | undefined, developmen
   if (isReleaseLike) {
     throw new Error(`${name} is required for AngelOS ${appEnv} builds.`);
   }
+  console.warn(
+    `[AngelOS runtime-config] ${name} is not set — falling back to "${developmentFallback}". ` +
+      'If this is unexpected, restart Metro with "npx expo start --clear" so it re-reads .env.local.'
+  );
   return developmentFallback;
 }
 
@@ -23,3 +27,12 @@ export const runtimeConfig = {
     'placeholder'
   )
 } as const;
+
+// These are all public/client-safe values (not secrets) — safe to log for debugging
+// the exact "hostname could not be found" failure mode this project has hit before,
+// where env vars silently fell back to placeholders inside an already-built bundle.
+console.log('[AngelOS runtime-config] resolved:', {
+  appEnv: runtimeConfig.appEnv,
+  apiUrl: runtimeConfig.apiUrl,
+  supabaseUrl: runtimeConfig.supabaseUrl
+});
