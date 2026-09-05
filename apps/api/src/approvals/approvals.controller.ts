@@ -1,38 +1,37 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  UseGuards,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../auth/auth-user';
 
+/**
+ * Routes stay flat (/approvals/*) so the existing n8n workflows keep working.
+ * Workspace scoping is resolved server-side from the caller's membership, or from an
+ * explicit workspaceId in the body/query when the account has more than one workspace.
+ */
 @Controller('approvals')
 @UseGuards(SupabaseAuthGuard)
 export class ApprovalsController {
   constructor(private approvalsService: ApprovalsService) {}
 
   /**
-   * FLOW 1: Client Message comes in from n8n → needs Angel approval
-   * n8n POST /approvals/message → stores in Supabase → AngelOS gets notified
+   * FLOW 1: inbound client message from n8n that needs Angel's approval.
    */
   @Post('message')
   async createMessageApproval(
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      sourceId: string; // LINE message ID
+      sourceId: string;
       sourceChannel: 'line' | 'instagram' | 'facebook' | 'tiktok';
-      content: string; // The actual message/question
+      content: string;
       clientId: string;
       clientName: string;
       context?: Record<string, any>;
-    },
+      workspaceId?: string;
+    }
   ) {
-    return this.approvalsService.createMessageApproval({
+    return this.approvalsService.createMessageApproval(user, {
       type: 'message',
       sourceId: body.sourceId,
       sourceChannel: body.sourceChannel,
@@ -41,30 +40,28 @@ export class ApprovalsController {
       clientName: body.clientName,
       context: body.context,
       actionRequired: 'reply',
+      workspaceId: body.workspaceId
     });
   }
 
   /**
-   * FLOW 2: Content draft from n8n → needs Angel approval before publishing
-   * n8n POST /approvals/content → stores in Supabase → AngelOS shows it
+   * FLOW 2: content draft that needs approval before publishing.
    */
   @Post('content')
   async createContentApproval(
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      sourceId: string; // Content ID
+      sourceId: string;
       sourceChannel: 'instagram' | 'facebook' | 'tiktok' | 'youtube';
-      content: string; // The caption/post text
-      clientId?: string; // Who created it
+      content: string;
+      clientId?: string;
       clientName: string;
-      context?: {
-        imageUrl?: string;
-        videoUrl?: string;
-        platform?: string;
-      };
-    },
+      context?: { imageUrl?: string; videoUrl?: string; platform?: string };
+      workspaceId?: string;
+    }
   ) {
-    return this.approvalsService.createContentApproval({
+    return this.approvalsService.createContentApproval(user, {
       type: 'content',
       sourceId: body.sourceId,
       sourceChannel: body.sourceChannel,
@@ -73,30 +70,28 @@ export class ApprovalsController {
       clientName: body.clientName,
       context: body.context,
       actionRequired: 'publish',
+      workspaceId: body.workspaceId
     });
   }
 
   /**
-   * FLOW 3: Booking request/change → may need Angel confirmation
-   * n8n POST /approvals/booking → stores in Supabase → AngelOS notifies
+   * FLOW 3: booking request/change that may need confirmation.
    */
   @Post('booking')
   async createBookingApproval(
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      sourceId: string; // Booking ID
-      sourceChannel: string; // How it came in (line, form, etc.)
-      content: string; // Summary of booking
+      sourceId: string;
+      sourceChannel: string;
+      content: string;
       clientId: string;
       clientName: string;
-      context?: {
-        serviceType?: string;
-        requestedDate?: string;
-        availability?: string[];
-      };
-    },
+      context?: { serviceType?: string; requestedDate?: string; availability?: string[] };
+      workspaceId?: string;
+    }
   ) {
-    return this.approvalsService.createBookingApproval({
+    return this.approvalsService.createBookingApproval(user, {
       type: 'booking',
       sourceId: body.sourceId,
       sourceChannel: body.sourceChannel,
@@ -105,65 +100,69 @@ export class ApprovalsController {
       clientName: body.clientName,
       context: body.context,
       actionRequired: 'confirm',
+      workspaceId: body.workspaceId
     });
   }
 
   /**
-   * Angel reviews & makes decision in AngelOS Approval screen
-   * AngelOS POST /approvals/decide → decision executes
+   * Angel's decision from the AngelOS Approvals screen.
    */
   @Post('decide')
   async submitDecision(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
       approvalId: string;
       decision: 'approved' | 'rejected' | 'needs_revision';
       notes?: string;
       revisedContent?: string;
-    },
+      workspaceId?: string;
+    }
   ) {
     return this.approvalsService.submitApprovalDecision(
+      user,
       {
         approvalId: body.approvalId,
         decision: body.decision,
         notes: body.notes,
-        revisedContent: body.revisedContent,
+        revisedContent: body.revisedContent
       },
-      user.id,
+      body.workspaceId
     );
   }
 
   /**
-   * AngelOS Approval screen fetches all pending approvals
-   * GET /approvals/pending → returns list for Angel to review
+   * Pending approvals for the Approvals screen.
    */
   @Get('pending')
-  async getPendingApprovals(@Query('limit') limit = '50') {
-    return this.approvalsService.getPendingApprovals(parseInt(limit));
+  async getPendingApprovals(
+    @CurrentUser() user: AuthUser,
+    @Query('limit') limit = '50',
+    @Query('workspaceId') workspaceId?: string
+  ) {
+    return this.approvalsService.getPendingApprovals(user, parseInt(limit, 10), workspaceId);
   }
 
   /**
-   * Get single approval details
-   */
-  @Get(':id')
-  async getApprovalById(@Param('id') id: string) {
-    return this.approvalsService.getApprovalById(id);
-  }
-
-  /**
-   * Get approval history/audit log
+   * Decision audit log. Declared before :id so the literal path wins.
    */
   @Get('history/list')
   async getHistory(
+    @CurrentUser() user: AuthUser,
     @Query('clientId') clientId?: string,
     @Query('type') type?: string,
     @Query('limit') limit = '100',
+    @Query('workspaceId') workspaceId?: string
   ) {
-    return this.approvalsService.getApprovalHistory(
-      clientId,
-      type,
-      parseInt(limit),
-    );
+    return this.approvalsService.getApprovalHistory(user, clientId, type, parseInt(limit, 10), workspaceId);
+  }
+
+  @Get(':id')
+  async getApprovalById(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('workspaceId') workspaceId?: string
+  ) {
+    return this.approvalsService.getApprovalById(user, id, workspaceId);
   }
 }

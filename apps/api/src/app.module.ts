@@ -23,8 +23,8 @@ import { BetaAccessGuard } from './common/guards/beta-access.guard';
 import { ApprovalsModule } from './approvals/approvals.module';
 
 @Module({
-  imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule],
-  providers: [ApprovalsModule,
+  imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule, ApprovalsModule],
+  providers: [
     { provide: APP_GUARD, useClass: EmergencyReadOnlyGuard },
     { provide: APP_GUARD, useClass: SubscriptionAccessGuard },
     { provide: APP_GUARD, useClass: PlatformFeatureGuard },

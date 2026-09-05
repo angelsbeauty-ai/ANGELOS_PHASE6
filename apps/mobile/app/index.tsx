@@ -103,6 +103,21 @@ export default function HomeScreen() {
         </Link>
       </Card>
 
+      <Card premium>
+        <View style={styles.cardHeader}>
+          <SectionTitle>Approvals</SectionTitle>
+          <Pill tone="gold">Owner only</Pill>
+        </View>
+        <BodyText>
+          Review client replies, content and bookings before AngelOS sends or publishes anything.
+        </BodyText>
+        <Link href="/approvals" asChild>
+          <Pressable style={styles.actionLink}>
+            <PrimaryActionLabel>Open Approvals</PrimaryActionLabel>
+          </Pressable>
+        </Link>
+      </Card>
+
       <Card>
         <SectionTitle>Run Today</SectionTitle>
         <View>
