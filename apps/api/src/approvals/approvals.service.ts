@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import type { AuthUser } from '../auth/auth-user';
+import { flow1StagingEnabled, StagingMessageExecutionService } from '../messaging/staging-message-execution.service';
 
 interface ApprovalPayload {
   type: 'message' | 'content' | 'booking';
@@ -30,6 +31,7 @@ interface ApprovalDecision {
 
 @Injectable()
 export class ApprovalsService {
+  constructor(private readonly stagingExecution: StagingMessageExecutionService) {}
   /**
    * Every approval row is workspace-scoped (approvals.workspace_id is NOT NULL and
    * RLS enforces is_workspace_member). Callers either name a workspace explicitly or
@@ -138,6 +140,10 @@ export class ApprovalsService {
    * Flow 1: Client message (LINE, Instagram, ...) arrives from n8n and needs Angel's approval.
    */
   async createMessageApproval(user: AuthUser, payload: ApprovalPayload) {
+    const workspaceId = await this.resolveWorkspaceId(user, payload.workspaceId);
+    if (flow1StagingEnabled(workspaceId)) {
+      return this.stagingExecution.prepare(user, workspaceId, payload.sourceId, payload.content, payload.clientId, payload.sourceChannel);
+    }
     return this.createApproval(user, { ...payload, type: 'message' }, 'reply');
   }
 
@@ -159,8 +165,8 @@ export class ApprovalsService {
    * Angel reviews an approval and decides.
    *
    * The status update is written as a single conditional UPDATE (... WHERE status = 'pending').
-   * That is what makes this safe against a double tap or a duplicate request: only the first
-   * one matches a pending row, so the decision — and the downstream send — happens exactly once.
+   * Message decisions use the staging bridge's transactional decision and durable claim.
+   * Other approval types retain the existing decision path.
    */
   async submitApprovalDecision(user: AuthUser, decision: ApprovalDecision, workspaceId?: string) {
     const scopedWorkspaceId = await this.resolveWorkspaceId(user, workspaceId);
@@ -176,6 +182,8 @@ export class ApprovalsService {
 
     if (fetchError) throw new InternalServerErrorException(fetchError.message);
     if (!existing) throw new NotFoundException('Approval not found.');
+
+    if (existing.type === 'message') return this.stagingExecution.decide(user, scopedWorkspaceId, decision);
 
     const decidedAt = new Date().toISOString();
 
@@ -218,13 +226,19 @@ export class ApprovalsService {
     return updated;
   }
 
+  async executeMessageApproval(user: AuthUser, approvalId: string, workspaceId?: string) {
+    const scopedWorkspaceId = await this.resolveWorkspaceId(user, workspaceId);
+    return this.stagingExecution.execute(user, scopedWorkspaceId, approvalId);
+  }
+
   /**
    * Hand the decision to n8n for execution.
    *
-   * NOTE: this is still the direct-execute path. Routing decisions through the existing
-   * guarded-send path (WF-49) is deliberately a separate step and is not wired up here yet.
+   * Existing content/booking handoff only. Message approvals never use this path;
+   * their staging execution is handled by the durable messaging claim above.
    */
   private async executeApprovalDecision(approval: any, decision: any) {
+    if (approval.type === 'message') throw new ConflictException('Message approvals must use the guarded staging execution bridge');
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_APPROVAL_EXECUTE;
 
     if (!n8nWebhookUrl) {

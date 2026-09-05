@@ -5,7 +5,10 @@ node_modules
 !.env.example
 dist
 coverage
+supabase/.temp/
 .DS_Store
 *.log
 !**/.env.example
 !**/.env.staging.example
+
+.flow1-hosted/

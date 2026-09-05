@@ -100,9 +100,16 @@ export class AutomationsService {
 
   private async runOne(user: AuthUser, workspaceId: string, job: any) {
     const service = createServiceSupabaseClient();
-    await service.from('automation_jobs').update({ status: 'running', attempt_count: job.attempt_count + 1, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId).eq('id', job.id);
+    const controls = await service.from('workspace_operational_controls').select('pause_automations,emergency_read_only').eq('workspace_id', workspaceId).single();
+    if (controls.error || !controls.data) throw new InternalServerErrorException('Operational safety controls unavailable');
+    if (controls.data.pause_automations || controls.data.emergency_read_only) throw new ConflictException('Automation execution is paused');
+    const { data: claimed, error: claimError } = await service.from('automation_jobs').update({ status: 'running', attempt_count: job.attempt_count + 1, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId).eq('id', job.id).eq('status', 'pending').select('id').maybeSingle();
+    if (claimError) throw new InternalServerErrorException(claimError.message);
+    if (!claimed) return { id: job.id, status: 'skipped', reason: 'already_claimed' };
     try {
-      const { data: appointment } = job.appointment_id ? await service.from('appointments').select('*').eq('workspace_id', workspaceId).eq('id', job.appointment_id).maybeSingle() : { data: null } as any;
+      if (job.rule?.enabled === false) return await this.finishJob(service, workspaceId, job.id, 'skipped', { reason: 'rule_disabled' });
+      const { data: appointment, error: appointmentError } = job.appointment_id ? await service.from('appointments').select('*').eq('workspace_id', workspaceId).eq('id', job.appointment_id).maybeSingle() : { data: null, error: null };
+      if (appointmentError) throw new Error(appointmentError.message);
       if (job.rule.trigger_type === 'appointment_confirmed' && (!appointment || !['confirmed','arrival_info_sent','checked_in'].includes(appointment.status))) {
         return await this.finishJob(service, workspaceId, job.id, 'skipped', { reason: 'appointment_state_changed', status: appointment?.status ?? 'missing' });
       }

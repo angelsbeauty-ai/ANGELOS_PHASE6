@@ -1,0 +1,9 @@
+{
+  "name": "angelos-flow1-synthetic-tests",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "embedded-postgres": "18.4.0-beta.17",
+    "pg": "8.23.0"
+  }
+}

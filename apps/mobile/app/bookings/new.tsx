@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
@@ -28,6 +28,8 @@ export default function NewBookingScreen() {
   const [time, setTime] = useState('10:00');
   const [softConflict, setSoftConflict] = useState(false);
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const request = useRef({ details: '', key: '' });
 
   useEffect(() => { void load(); }, []);
   async function load() {
@@ -43,11 +45,14 @@ export default function NewBookingScreen() {
   const selectedService = useMemo(() => services.find((item) => item.id === serviceId), [services, serviceId]);
 
   async function save(overrideSoftConflict = false) {
-    if (!workspaceId || !clientId || !serviceId) return;
+    if (!workspaceId || !clientId || !serviceId || saving.current) return;
+    saving.current = true;
     setBusy(true); setSoftConflict(false);
     try {
       const startAt = localDateTimeToIso(date, time);
-      const result = await createAppointment(workspaceId, { clientId, serviceId, startAt, source: 'owner', overrideSoftConflict });
+      const details = JSON.stringify([workspaceId, clientId, serviceId, startAt]);
+      if (request.current.details !== details) request.current = { details, key: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      const result = await createAppointment(workspaceId, { clientId, serviceId, startAt, source: 'owner', overrideSoftConflict, idempotencyKey: request.current.key });
       Alert.alert('Booking created', `${selectedClient?.display_name ?? 'Client'} | ${selectedService?.name ?? 'Service'}`);
       router.replace('/calendar');
       return result;
@@ -56,7 +61,7 @@ export default function NewBookingScreen() {
         setSoftConflict(true); return;
       }
       Alert.alert('Could not create booking', error instanceof Error ? error.message : 'Unknown error');
-    } finally { setBusy(false); }
+    } finally { saving.current = false; setBusy(false); }
   }
 
   return <Screen>

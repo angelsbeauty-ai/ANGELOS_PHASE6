@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { AiProviderService } from '../ai/ai-provider.service';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
@@ -112,7 +112,9 @@ export class AnalyticsService {
 
   async overview(user: AuthUser, workspaceId: string, days = 30) {
     const supabase = createUserSupabaseClient(user.accessToken);
-    const safeDays = Math.max(7, Math.min(365, Math.trunc(days || 30)));
+    const owner = await supabase.from('workspace_memberships').select('role').eq('workspace_id', workspaceId).eq('user_id', user.id).eq('role', 'owner').maybeSingle();
+    if (owner.error || !owner.data) throw new ForbiddenException('Only the workspace owner can view business analytics');
+    const safeDays = Math.max(7, Math.min(365, Math.trunc(Number.isFinite(days) ? days : 30)));
     const periodEnd = new Date();
     const periodStart = new Date(periodEnd.getTime() - safeDays * 24 * 60 * 60 * 1000);
 
@@ -159,6 +161,7 @@ export class AnalyticsService {
       period: { days: safeDays, start: periodStart.toISOString(), end: periodEnd.toISOString() },
       workspace: { id: workspace.id, name: workspace.name, timezone: workspace.timezone, currency: workspace.currency },
       profile: profile ?? { primary_goal: 'bookings', experience_level: 'beginner', local_context_enabled: true },
+      operatingCosts: await this.operatingCosts(supabase, workspaceId),
       totals,
       topPost,
       strongestByGoal,
@@ -167,6 +170,22 @@ export class AnalyticsService {
       evidence,
       recentPosts: scored.slice(0, 12).map(summarizePost)
     };
+  }
+
+  private async operatingCosts(supabase: ReturnType<typeof createUserSupabaseClient>, workspaceId: string) {
+    const subscription = await supabase.from('workspace_subscriptions').select('plan_code,billing_interval,discount_percent,status').eq('workspace_id', workspaceId).maybeSingle();
+    if (subscription.error) throw new InternalServerErrorException(subscription.error.message);
+    let planPrice = null;
+    if (subscription.data) {
+      const plan = await supabase.from('subscription_plans').select('monthly_price_cents,yearly_price_cents,currency').eq('code', subscription.data.plan_code).maybeSingle();
+      if (plan.error) throw new InternalServerErrorException(plan.error.message);
+      if (plan.data) {
+        const interval = subscription.data.billing_interval;
+        const cents = interval === 'yearly' ? plan.data.yearly_price_cents : plan.data.monthly_price_cents;
+        planPrice = { amountCents: Math.round(Number(cents) * (100 - Number(subscription.data.discount_percent)) / 100), currency: plan.data.currency, interval, status: subscription.data.status };
+      }
+    }
+    return { planPrice, actualTotal: null, ai: null, messaging: null, hosting: null, explanation: 'Plan price is a quote, not a charge. Actual provider costs are not measured yet.' };
   }
 
   async marketingCoach(user: AuthUser, workspaceId: string, days = 30) {

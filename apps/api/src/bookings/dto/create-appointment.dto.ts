@@ -1,6 +1,7 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsUUID, Length, MaxLength } from 'class-validator';
 
 export class CreateAppointmentDto {
+  @IsOptional() @IsString() @Length(8, 128) idempotencyKey?: string;
   @IsUUID() clientId!: string;
   @IsUUID() serviceId!: string;
   @IsDateString() startAt!: string;

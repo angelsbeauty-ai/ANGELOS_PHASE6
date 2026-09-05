@@ -31,6 +31,7 @@ export interface AnalyticsPostSummary {
 }
 
 export interface AnalyticsOverview {
+  operatingCosts: { planPrice: { amountCents: number; currency: string; interval: string; status: string } | null; actualTotal: null; ai: null; messaging: null; hosting: null; explanation: string };
   period: { days: number; start: string; end: string };
   workspace: { id: string; name: string; timezone: string; currency: string };
   profile: { primary_goal?: string; experience_level?: string; service_area?: string | null; city?: string | null; region?: string | null; country?: string | null; local_context_enabled?: boolean };

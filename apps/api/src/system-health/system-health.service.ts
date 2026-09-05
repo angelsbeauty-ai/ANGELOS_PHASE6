@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import type { UpdateOperationalControlsDto } from './dto/update-operational-controls.dto';
@@ -61,8 +61,9 @@ export class SystemHealthService {
 
     findings.push({ component: 'database', status: 'healthy', summary: 'AngelOS business database is reachable.', details: { verification: 'workspace_read_succeeded' } });
 
-    const { data: controls } = await service.from('workspace_operational_controls').select('*').eq('workspace_id', workspaceId).single();
-    if (controls?.emergency_read_only) findings.push({ component: 'operations', status: 'paused', summary: 'Emergency read-only mode is enabled.', actionPath: '/system-health', impact: { writesPaused: true } });
+    const { data: controls, error: controlsError } = await service.from('workspace_operational_controls').select('*').eq('workspace_id', workspaceId).single();
+    if (controlsError || !controls) throw new InternalServerErrorException('Operational safety controls unavailable');
+    if (controls.emergency_read_only) findings.push({ component: 'operations', status: 'paused', summary: 'Emergency read-only mode is enabled.', actionPath: '/system-health', impact: { writesPaused: true } });
     if (controls?.pause_ai_actions) findings.push({ component: 'ai', capability: 'actions', status: 'paused', summary: 'AI actions are paused by the owner.', actionPath: '/system-health', impact: { chatStillAvailable: true, mutationsPaused: true } });
     else if (process.env.OPENAI_API_KEY) findings.push({ component: 'ai', capability: 'actions', status: 'healthy', summary: 'AI action layer is configured.', details: { externalProviderPinged: false } });
     else findings.push({
@@ -98,11 +99,11 @@ export class SystemHealthService {
     if (channelsError) throw new InternalServerErrorException(channelsError.message);
     if (!(channels ?? []).length) findings.push({ component: 'messaging', status: 'unknown', summary: 'No messaging channels are connected yet.' });
     for (const channel of channels ?? []) {
-      const status = this.mapConnectionStatus(channel.status);
       const provider = String(channel.provider);
+      const status = provider !== 'manual' && channel.status === 'connected' ? 'needs_attention' : this.mapConnectionStatus(channel.status);
       findings.push({
         component: 'messaging', capability: `channel:${channel.id}`, provider, status,
-        summary: status === 'healthy' ? `${channel.display_name} messaging is connected.` : `${channel.display_name} messaging status: ${channel.status}.`,
+        summary: provider !== 'manual' && channel.status === 'connected' ? `${channel.display_name}: live delivery transport is not implemented.` : status === 'healthy' ? `${channel.display_name} demo messaging is connected.` : `${channel.display_name} messaging status: ${channel.status}.`,
         actionPath: '/messages', details: { capabilities: channel.capabilities ?? {} },
         attention: ['needs_attention', 'disconnected'].includes(status) ? { severity: 'today', category: 'integration', dedupeKey: `messaging:${channel.id}:${channel.status}`, title: `${channel.display_name} needs attention`, summary: `Messaging is ${channel.status}. Review the connection before relying on automated sends.`, sourceType: 'messaging_channel', sourceId: channel.id } : undefined
       });
@@ -183,6 +184,9 @@ export class SystemHealthService {
   }
 
   async updateControls(user: AuthUser, workspaceId: string, dto: UpdateOperationalControlsDto) {
+    const membershipClient = createUserSupabaseClient(user.accessToken);
+    const { data: owner, error: ownerError } = await membershipClient.from('workspace_memberships').select('role').eq('workspace_id', workspaceId).eq('user_id', user.id).eq('role', 'owner').maybeSingle();
+    if (ownerError || !owner) throw new ForbiddenException('Only the workspace owner can change operational controls');
     const userClient = createUserSupabaseClient(user.accessToken);
     await this.assertWorkspaceAccess(userClient, workspaceId);
     const service = createServiceSupabaseClient();
@@ -267,6 +271,7 @@ export class SystemHealthService {
     if (known.includes('disconnected') || known.includes('needs_attention')) return 'needs_attention';
     if (known.includes('degraded')) return 'degraded';
     if (known.includes('paused')) return 'paused';
+    if (statuses.includes('unknown')) return 'unknown';
     if (known.length && known.every((status) => status === 'healthy')) return 'healthy';
     return 'unknown';
   }
