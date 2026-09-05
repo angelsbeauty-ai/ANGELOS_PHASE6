@@ -205,7 +205,7 @@ export class BookingsService {
   }
 
   async confirm(user: AuthUser, workspaceId: string, appointmentId: string) {
-    const appointment = await this.transition(user, workspaceId, appointmentId, 'confirmed', 'confirmed');
+    const appointment = await this.transition(user, workspaceId, appointmentId, 'confirmed', 'confirmed', ['request', 'confirmation_pending']);
     try {
       const automationJobs = await this.automations.queueForAppointmentEvent(user, workspaceId, appointmentId, 'appointment_confirmed');
       return { appointment, automationJobs };
@@ -215,13 +215,13 @@ export class BookingsService {
   }
 
   async cancel(user: AuthUser, workspaceId: string, appointmentId: string) {
-    const appointment = await this.transition(user, workspaceId, appointmentId, 'cancelled', 'cancelled');
+    const appointment = await this.transition(user, workspaceId, appointmentId, 'cancelled', 'cancelled', ACTIVE_APPOINTMENT_STATUSES.concat('request'));
     await this.automations.cancelAppointmentJobs(user, workspaceId, appointmentId);
     return { appointment };
   }
 
   async complete(user: AuthUser, workspaceId: string, appointmentId: string) {
-    const appointment = await this.transition(user, workspaceId, appointmentId, 'completed', 'completed');
+    const appointment = await this.transition(user, workspaceId, appointmentId, 'completed', 'completed', ['confirmed', 'arrival_info_sent', 'checked_in']);
     try {
       const automationJobs = await this.automations.queueForAppointmentEvent(user, workspaceId, appointmentId, 'appointment_completed');
       return { appointment, automationJobs };
@@ -259,12 +259,37 @@ export class BookingsService {
     return { appointment: data, softConflictsAccepted: conflicts.soft };
   }
 
-  private async transition(user: AuthUser, workspaceId: string, appointmentId: string, status: string, eventType: string) {
+  private async transition(
+    user: AuthUser,
+    workspaceId: string,
+    appointmentId: string,
+    status: string,
+    eventType: string,
+    allowedFrom: string[]
+  ) {
     const supabase = createUserSupabaseClient(user.accessToken);
     const { data: current, error: currentError } = await supabase.from('appointments').select('*').eq('workspace_id', workspaceId).eq('id', appointmentId).single();
     if (currentError || !current) throw new NotFoundException('Appointment not found');
-    const { data, error } = await supabase.from('appointments').update({ status, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId).eq('id', appointmentId).select('*,client:clients(id,display_name)').single();
-    if (error) throw new InternalServerErrorException(error.message);
+    // Constrain the update to the statuses this transition may legally start from. Without it a
+    // cancelled or completed appointment could be moved back to confirmed -- and because
+    // cancel() has already cancelled its automation jobs by then, the resurrected appointment
+    // would silently lose its reminders. Doing it in the WHERE clause rather than as a read-then-
+    // write also means a double tap only ever transitions once.
+    const { data, error } = await supabase
+      .from('appointments')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('workspace_id', workspaceId)
+      .eq('id', appointmentId)
+      .in('status', allowedFrom)
+      .select('*,client:clients(id,display_name)')
+      .maybeSingle();
+    if (error) {
+      if ((error as any).code === '23P01') throw new ConflictException('That time was just booked. Please choose another slot.');
+      throw new InternalServerErrorException(error.message);
+    }
+    if (!data) {
+      throw new ConflictException(`This appointment is ${String(current.status).replaceAll('_', ' ')} and can no longer be marked ${status}.`);
+    }
     await this.appendEvent(supabase, user.id, workspaceId, appointmentId, eventType, appointmentSnapshot(current), appointmentSnapshot(data));
     return data;
   }

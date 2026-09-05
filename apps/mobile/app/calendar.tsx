@@ -14,7 +14,7 @@ import {
   SupportText,
   ui
 } from '../src/components/ui';
-import { getCalendar, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
+import { confirmAppointment, getCalendar, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
 import { getActiveWorkspace } from '../src/lib/workspace';
 
 export default function CalendarScreen() {
@@ -22,8 +22,26 @@ export default function CalendarScreen() {
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [busy, setBusy] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => { void load(); }, []);
+
+  // An appointment booked in AngelOS is created as confirmation_pending. Until it is confirmed it
+  // never queues its reminder automations, so the owner needs to be able to confirm it here.
+  async function confirm(appointmentId: string) {
+    if (confirmingId) return;
+    setConfirmingId(appointmentId);
+    try {
+      const workspace = await getActiveWorkspace();
+      await confirmAppointment(workspace.id, appointmentId);
+      await load();
+    } catch (error) {
+      Alert.alert('Could not confirm booking', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setConfirmingId(null);
+    }
+  }
+
   async function load() {
     setBusy(true);
     try {
@@ -38,8 +56,8 @@ export default function CalendarScreen() {
   }
 
   const items = [
-    ...appointments.map((item) => ({ id: `a-${item.id}`, start: item.start_at, kind: 'appointment', title: `${item.client?.display_name ?? 'Client'} | ${item.service_name}`, detail: item.status })),
-    ...blocks.map((item) => ({ id: `b-${item.id}`, start: item.start_at, kind: 'block', title: item.title, detail: `${item.block_type} block` }))
+    ...appointments.map((item) => ({ id: `a-${item.id}`, start: item.start_at, kind: 'appointment', title: `${item.client?.display_name ?? 'Client'} | ${item.service_name}`, detail: item.status, appointmentId: item.id, status: item.status })),
+    ...blocks.map((item) => ({ id: `b-${item.id}`, start: item.start_at, kind: 'block', title: item.title, detail: `${item.block_type} block`, appointmentId: null as string | null, status: null as string | null }))
   ].sort((a, b) => a.start.localeCompare(b.start));
 
   return <Screen>
@@ -95,6 +113,17 @@ export default function CalendarScreen() {
           </View>
           <Text style={styles.itemTitle}>{item.title}</Text>
           <SupportText>{item.detail.replaceAll('_', ' ')}</SupportText>
+          {item.appointmentId && (item.status === 'confirmation_pending' || item.status === 'request') ? (
+            <Pressable
+              onPress={() => void confirm(item.appointmentId as string)}
+              disabled={confirmingId !== null}
+              style={confirmingId !== null ? styles.mutedAction : undefined}
+            >
+              <PrimaryActionLabel>
+                {confirmingId === item.appointmentId ? 'Confirming...' : 'Confirm Booking'}
+              </PrimaryActionLabel>
+            </Pressable>
+          ) : null}
         </Card>
       ))}
     </View>
@@ -115,6 +144,7 @@ function formatCalendarTime(value: string) {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: ui.spacing.sm },
   headerCopy: { flex: 1, gap: ui.spacing.xs },
+  mutedAction: { opacity: 0.55 },
   newBookingButton: { width: 132 },
   controlRow: { flexDirection: 'row', alignItems: 'center', gap: ui.spacing.sm },
   serviceLink: {
