@@ -17,6 +17,10 @@ import { addClientNote, addTreatment, getClient, type ClientDetail } from '../..
 import { recordFinanceEntry } from '../../src/lib/finance';
 import { getActiveWorkspace } from '../../src/lib/workspace';
 
+function newPaymentKey() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -26,6 +30,12 @@ export default function ClientDetailScreen() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [busy, setBusy] = useState(true);
+  const [savingPayment, setSavingPayment] = useState(false);
+  // One key per payment the owner is entering, NOT per submit. A retry or a double tap has to
+  // send the same key for the server's unique index on (workspace_id, idempotency_key) to collapse
+  // it into one entry; it is rotated only after a payment is actually recorded, so a genuine
+  // second payment for the same amount still goes through.
+  const [paymentKey, setPaymentKey] = useState(newPaymentKey);
 
   useEffect(() => { if (id) void load(); }, [id]);
 
@@ -52,21 +62,27 @@ export default function ClientDetailScreen() {
 
 
   async function savePayment() {
-    if (!workspaceId || !id) return;
+    if (!workspaceId || !id || savingPayment) return;
     const amount = Number(paymentAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
+    setSavingPayment(true);
     try {
       await recordFinanceEntry(workspaceId, {
         clientId: id,
         entryType: 'payment',
         amount,
         method: paymentMethod.trim() || 'other',
-        idempotencyKey: `client-payment:${id}:${Date.now()}`
+        idempotencyKey: `client-payment:${id}:${paymentKey}`
       });
       setPaymentAmount('');
+      // Only now does this become a different payment.
+      setPaymentKey(newPaymentKey());
       await load();
     } catch (error) {
+      // Deliberately keep the same key so a retry after a failure still deduplicates.
       Alert.alert('Could not record payment', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setSavingPayment(false);
     }
   }
 
@@ -156,7 +172,7 @@ export default function ClientDetailScreen() {
         <SupportText>Quick record actual money received. Booked price does not count as income.</SupportText>
         <TextInput value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="decimal-pad" placeholder="Amount actually received" placeholderTextColor={ui.colors.secondaryText} style={styles.input} />
         <TextInput value={paymentMethod} onChangeText={setPaymentMethod} placeholder="Payment method (cash, bank, etc.)" placeholderTextColor={ui.colors.secondaryText} style={styles.input} />
-        <Pressable onPress={() => void savePayment()} disabled={!paymentAmount.trim()}><PrimaryActionLabel>Record Received Payment</PrimaryActionLabel></Pressable>
+        <Pressable onPress={() => void savePayment()} disabled={!paymentAmount.trim() || savingPayment}><PrimaryActionLabel>{savingPayment ? 'Recording...' : 'Record Received Payment'}</PrimaryActionLabel></Pressable>
         {detail.followups.length ? detail.followups.slice(0, 5).map((followup) => <BodyText key={followup.id}>{followup.reason} | {followup.status}</BodyText>) : <SupportText>No follow-ups yet.</SupportText>}
       </Card>
     </Screen>
