@@ -8,6 +8,7 @@ import type { CreateCalendarBlockDto } from './dto/create-block.dto';
 import type { AvailabilityDto } from './dto/availability.dto';
 import type { SetBusinessHoursDto } from './dto/set-business-hours.dto';
 import { AutomationsService } from '../automations/automations.service';
+import { createHash } from 'node:crypto';
 
 const ACTIVE_APPOINTMENT_STATUSES = ['confirmation_pending','confirmed','arrival_info_sent','checked_in'];
 const HARD_BLOCK_TYPES = new Set(['hard', 'personal']);
@@ -124,8 +125,8 @@ export class BookingsService {
     const busyBefore = service.buffer_before_minutes * 60_000;
     const busyAfter = service.buffer_after_minutes * 60_000;
     const duration = service.duration_minutes * 60_000;
-    const rangeStart = new Date(windowStart.getTime() - busyAfter);
-    const rangeEnd = new Date(windowEnd.getTime() + duration + busyBefore);
+    const rangeStart = new Date(windowStart.getTime() - busyBefore);
+    const rangeEnd = new Date(windowEnd.getTime() + busyAfter);
 
     const [appointments, blocks, workspaceResult, hoursResult] = await Promise.all([
       supabase.from('appointments').select('id,busy_start_at,busy_end_at,status').eq('workspace_id', workspaceId).in('status', ACTIVE_APPOINTMENT_STATUSES).lt('busy_start_at', rangeEnd.toISOString()).gt('busy_end_at', rangeStart.toISOString()),
@@ -164,6 +165,12 @@ export class BookingsService {
 
   async createAppointment(user: AuthUser, workspaceId: string, dto: CreateAppointmentDto) {
     const supabase = createUserSupabaseClient(user.accessToken);
+    // Scope the persisted primary key to this workspace; no separate cache or schema is needed.
+    const requestId = dto.idempotencyKey ? bookingRequestId(workspaceId, dto.idempotencyKey) : undefined;
+    if (requestId) {
+      const prior = await this.findBookingRequest(supabase, workspaceId, requestId, dto);
+      if (prior) return { appointment: prior, softConflictsAccepted: [], duplicatePrevented: true };
+    }
     await this.assertClient(supabase, workspaceId, dto.clientId);
     const service = await this.getService(supabase, workspaceId, dto.serviceId);
     const times = appointmentTimes(service, dto.startAt);
@@ -176,6 +183,7 @@ export class BookingsService {
     }
 
     const insert = {
+      ...(requestId ? { id: requestId } : {}),
       workspace_id: workspaceId,
       client_id: dto.clientId,
       service_id: service.id,
@@ -197,11 +205,24 @@ export class BookingsService {
 
     const { data, error } = await supabase.from('appointments').insert(insert).select('*,client:clients(id,display_name)').single();
     if (error) {
+      if (requestId && ['23505', '23P01'].includes(error.code)) {
+        const prior = await this.findBookingRequest(supabase, workspaceId, requestId, dto);
+        if (prior) return { appointment: prior, softConflictsAccepted: [], duplicatePrevented: true };
+      }
       if ((error as any).code === '23P01') throw new ConflictException('That time was just booked. Please choose another slot.');
       throw new InternalServerErrorException(error.message);
     }
     await this.appendEvent(supabase, user.id, workspaceId, data.id, 'created', null, appointmentSnapshot(data));
     return { appointment: data, softConflictsAccepted: conflicts.soft };
+  }
+
+  private async findBookingRequest(supabase: ReturnType<typeof createUserSupabaseClient>, workspaceId: string, requestId: string, dto: CreateAppointmentDto) {
+    const { data, error } = await supabase.from('appointments').select('*,client:clients(id,display_name)').eq('workspace_id', workspaceId).eq('id', requestId).maybeSingle();
+    if (error) throw new InternalServerErrorException(error.message);
+    if (data && (data.client_id !== dto.clientId || data.service_id !== dto.serviceId || new Date(data.start_at).getTime() !== new Date(dto.startAt).getTime() || (data.source ?? null) !== (dto.source?.trim() || null) || (data.notes ?? null) !== (dto.notes?.trim() || null))) {
+      throw new ConflictException('Booking request key was already used for different details');
+    }
+    return data;
   }
 
   async confirm(user: AuthUser, workspaceId: string, appointmentId: string) {
@@ -235,6 +256,7 @@ export class BookingsService {
     const { data: current, error: currentError } = await supabase.from('appointments').select('*').eq('workspace_id', workspaceId).eq('id', appointmentId).single();
     if (currentError || !current) throw new NotFoundException('Appointment not found');
     if (['cancelled','completed','no_show'].includes(current.status)) throw new ConflictException('This appointment can no longer be rescheduled');
+    if (new Date(current.start_at).getTime() === new Date(dto.startAt).getTime()) return { appointment: current, softConflictsAccepted: [], duplicatePrevented: true };
 
     const service = {
       duration_minutes: current.duration_minutes,
@@ -250,11 +272,12 @@ export class BookingsService {
 
     const { data, error } = await supabase.from('appointments').update({
       start_at: times.start.toISOString(), end_at: times.end.toISOString(), busy_start_at: times.busyStart.toISOString(), busy_end_at: times.busyEnd.toISOString(), updated_at: new Date().toISOString()
-    }).eq('workspace_id', workspaceId).eq('id', appointmentId).select('*,client:clients(id,display_name)').single();
+    }).eq('workspace_id', workspaceId).eq('id', appointmentId).eq('status', current.status).eq('start_at', current.start_at).eq('updated_at', current.updated_at).select('*,client:clients(id,display_name)').maybeSingle();
     if (error) {
       if ((error as any).code === '23P01') throw new ConflictException('That time was just booked. Please choose another slot.');
       throw new InternalServerErrorException(error.message);
     }
+    if (!data) throw new ConflictException('Appointment changed concurrently. Refresh before retrying.');
     await this.appendEvent(supabase, user.id, workspaceId, appointmentId, 'rescheduled', appointmentSnapshot(current), appointmentSnapshot(data));
     return { appointment: data, softConflictsAccepted: conflicts.soft };
   }
@@ -263,8 +286,12 @@ export class BookingsService {
     const supabase = createUserSupabaseClient(user.accessToken);
     const { data: current, error: currentError } = await supabase.from('appointments').select('*').eq('workspace_id', workspaceId).eq('id', appointmentId).single();
     if (currentError || !current) throw new NotFoundException('Appointment not found');
-    const { data, error } = await supabase.from('appointments').update({ status, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId).eq('id', appointmentId).select('*,client:clients(id,display_name)').single();
+    if (current.status === status) return current;
+    const allowed: Record<string, string[]> = { confirmed: ['confirmation_pending'], cancelled: ACTIVE_APPOINTMENT_STATUSES, completed: ['confirmed', 'arrival_info_sent', 'checked_in'] };
+    if (!allowed[status]?.includes(current.status)) throw new ConflictException('Invalid appointment lifecycle transition');
+    const { data, error } = await supabase.from('appointments').update({ status, updated_at: new Date().toISOString() }).eq('workspace_id', workspaceId).eq('id', appointmentId).eq('status', current.status).eq('updated_at', current.updated_at).select('*,client:clients(id,display_name)').maybeSingle();
     if (error) throw new InternalServerErrorException(error.message);
+    if (!data) throw new ConflictException('Appointment changed concurrently. Refresh before retrying.');
     await this.appendEvent(supabase, user.id, workspaceId, appointmentId, eventType, appointmentSnapshot(current), appointmentSnapshot(data));
     return data;
   }
@@ -315,6 +342,11 @@ export class BookingsService {
     const { error } = await supabase.from('appointment_events').insert({ workspace_id: workspaceId, appointment_id: appointmentId, event_type: eventType, from_state: fromState, to_state: toState, actor_user_id: userId });
     if (error) throw new InternalServerErrorException(`Appointment changed, but history log failed: ${error.message}`);
   }
+}
+
+function bookingRequestId(workspaceId: string, key: string) {
+  const digest = createHash('sha256').update(JSON.stringify([workspaceId, key])).digest('hex');
+  return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
 function appointmentTimes(service: { duration_minutes: number; buffer_before_minutes: number; buffer_after_minutes: number }, startAt: string) {
