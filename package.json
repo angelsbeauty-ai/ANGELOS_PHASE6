@@ -7,7 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "test:synthetic": "npm run build:api && node --test scripts/core-safety.test.cjs",
+    "test:synthetic": "npm run build:api && node --test scripts/core-safety.test.cjs && node --test --test-concurrency=1 scripts/flow1-tests/flow1.test.mjs",
+    "test:flow1": "npm run build:api && node --test --test-concurrency=1 scripts/flow1-tests/flow1.test.mjs",
+    "test:flow1:setup": "npm ci --prefix scripts/flow1-tests --ignore-scripts --no-audit --no-fund",
     "dev:mobile": "npm --workspace @angelos/mobile run start",
     "dev:api": "npm --workspace @angelos/api run start:dev",
     "typecheck": "npm run typecheck --workspaces --if-present",
