@@ -69,12 +69,25 @@ export class MessagingService {
     const { data: channel, error: channelError } = await supabase.from('messaging_channels').select('*').eq('workspace_id', workspaceId).eq('id', dto.channelId).single();
     if (channelError || !channel) throw new NotFoundException('Messaging channel not found');
     if (channel.provider !== 'manual') throw new BadRequestException('Manual ingest is only available for the demo transport. Live providers use verified webhooks.');
+    if (channel.status !== 'connected') throw new ConflictException('Messaging channel is not connected.');
+    if (!dto.body.trim()) throw new BadRequestException('Message body is required');
+    if (dto.externalMessageId?.trim()) {
+      const prior = await supabase.from('client_messages').select('id').eq('workspace_id', workspaceId).eq('external_message_id', dto.externalMessageId.trim()).maybeSingle();
+      if (prior.error) throw new InternalServerErrorException(prior.error.message);
+      if (prior.data) throw new ConflictException('That inbound message was already ingested.');
+    }
 
     let clientId = dto.clientId ?? null;
-    if (!clientId) {
+    if (clientId) {
+      const client = await supabase.from('clients').select('id').eq('workspace_id', workspaceId).eq('id', clientId).maybeSingle();
+      if (client.error) throw new InternalServerErrorException(client.error.message);
+      if (!client.data) throw new NotFoundException('Client not found');
+    }
+    {
       const { data: identity, error: identityError } = await supabase.from('client_channel_identities').select('client_id').eq('workspace_id', workspaceId).eq('channel_id', dto.channelId).eq('external_user_id', dto.externalUserId).maybeSingle();
       if (identityError) throw new InternalServerErrorException(identityError.message);
-      clientId = identity?.client_id ?? null;
+      if (clientId && identity && identity.client_id !== clientId) throw new ConflictException('Channel identity is already linked to a different client');
+      clientId = clientId ?? identity?.client_id ?? null;
     }
     if (!clientId) {
       // Never merge by similar names. A previously unseen channel identity becomes a new lead.
@@ -93,7 +106,9 @@ export class MessagingService {
     const priority = sensitive || phishing || /arrived|can't find|cannot find|lost/i.test(dto.body) ? 'urgent' : 'today';
     const status = phishing ? 'spam_scam' : sensitive ? 'needs_owner' : intent === 'booking' || intent === 'reschedule' ? 'booking_in_progress' : 'needs_reply';
 
-    const { data: existingThread } = await supabase.from('message_threads').select('id').eq('workspace_id', workspaceId).eq('channel_id', dto.channelId).eq('external_thread_id', dto.externalThreadId).maybeSingle();
+    const { data: existingThread, error: threadLookupError } = await supabase.from('message_threads').select('id,client_id,contact_external_user_id').eq('workspace_id', workspaceId).eq('channel_id', dto.channelId).eq('external_thread_id', dto.externalThreadId).maybeSingle();
+    if (threadLookupError) throw new InternalServerErrorException(threadLookupError.message);
+    if (existingThread && (existingThread.client_id !== clientId || existingThread.contact_external_user_id !== dto.externalUserId)) throw new ConflictException('Thread identity does not match this client');
     let threadId = existingThread?.id as string | undefined;
     if (!threadId) {
       const created = await supabase.from('message_threads').insert({
@@ -159,6 +174,7 @@ export class MessagingService {
   }
 
   async createReply(user: AuthUser, workspaceId: string, threadId: string, dto: CreateReplyDto) {
+    if (!dto.body.trim()) throw new BadRequestException('Message body is required');
     const detail = await this.getThread(user, workspaceId, threadId);
     const client = (detail.thread as any).client;
     const sensitive = isSensitive(dto.body, (detail.thread as any).intent);
@@ -221,22 +237,23 @@ export class MessagingService {
     if (!thread?.channel) throw new NotFoundException('Messaging channel not found');
     if (!explicitOwnerApproval && thread.client?.do_not_auto_message && message.sender_type === 'ai') throw new ConflictException('Client is marked Do Not Auto-Message.');
     if (!explicitOwnerApproval && message.sensitive && message.sender_type === 'ai') throw new ConflictException('Sensitive AI draft requires owner approval before sending.');
+    if (thread.channel.status !== 'connected') throw new ConflictException('Messaging channel is not connected.');
+    if (!['draft', 'pending_approval', 'queued', 'failed'].includes(message.status)) throw new ConflictException('Message is not in a sendable state.');
     if (thread.channel.provider !== 'manual') throw new ConflictException('Live provider transport is not connected yet. This Sprint 5 build safely stops instead of pretending the message was sent.');
 
     const idempotencyKey = `message:${message.id}`;
     const service = createServiceSupabaseClient();
-    const { data: existing } = await service.from('message_send_attempts').select('*').eq('workspace_id', workspaceId).eq('idempotency_key', idempotencyKey).maybeSingle();
+    const { data: existing, error: existingError } = await service.from('message_send_attempts').select('*').eq('workspace_id', workspaceId).eq('idempotency_key', idempotencyKey).maybeSingle();
+    if (existingError) throw new InternalServerErrorException(existingError.message);
+    if (existing && existing.status !== 'sent') throw new ConflictException('Delivery is already claimed or uncertain. Review the attempt before retrying.');
     if (existing?.status === 'sent') {
-      const { data: refreshed } = await supabase.from('client_messages').select('*').eq('id', message.id).single();
+      const { data: refreshed } = await supabase.from('client_messages').select('*').eq('workspace_id', workspaceId).eq('id', message.id).single();
       return { message: refreshed, sent: true, duplicatePrevented: true };
     }
-    const attemptNo = Number(existing?.attempt_no ?? 0) + 1;
-    if (existing) {
-      const queued = await service.from('message_send_attempts').update({ status: 'queued', attempt_no: attemptNo, error_message: null }).eq('workspace_id', workspaceId).eq('id', existing.id);
-      if (queued.error) throw new InternalServerErrorException(queued.error.message);
-    } else {
-      const queued = await service.from('message_send_attempts').insert({ workspace_id: workspaceId, message_id: message.id, channel_id: thread.channel.id, idempotency_key: idempotencyKey, attempt_no: attemptNo, status: 'queued' });
-      if (queued.error) throw new InternalServerErrorException(queued.error.message);
+    const queued = await service.from('message_send_attempts').insert({ workspace_id: workspaceId, message_id: message.id, channel_id: thread.channel.id, idempotency_key: idempotencyKey, attempt_no: 1, status: 'queued' });
+    if (queued.error) {
+      if (queued.error.code === '23505') throw new ConflictException('Delivery is already claimed.');
+      throw new InternalServerErrorException(queued.error.message);
     }
 
     const result = await this.manualAdapter.send({ externalThreadId: thread.external_thread_id, body: message.body, idempotencyKey });
@@ -245,13 +262,13 @@ export class MessagingService {
     }).eq('workspace_id', workspaceId).eq('idempotency_key', idempotencyKey);
     if (attemptError) throw new InternalServerErrorException(attemptError.message);
     if (result.status !== 'sent') {
-      await service.from('client_messages').update({ status: 'failed' }).eq('id', message.id);
+      await service.from('client_messages').update({ status: 'failed' }).eq('workspace_id', workspaceId).eq('id', message.id);
       throw new InternalServerErrorException(result.error ?? 'Message delivery could not be verified');
     }
     const sentAt = new Date().toISOString();
-    const { data: sentMessage, error: updateError } = await service.from('client_messages').update({ status: 'sent', external_message_id: result.externalMessageId, sent_at: sentAt }).eq('id', message.id).select('*').single();
+    const { data: sentMessage, error: updateError } = await service.from('client_messages').update({ status: 'sent', external_message_id: result.externalMessageId, sent_at: sentAt }).eq('workspace_id', workspaceId).eq('id', message.id).select('*').single();
     if (updateError) throw new InternalServerErrorException(updateError.message);
-    await service.from('message_threads').update({ status: 'waiting_client', needs_owner: false, last_message_at: sentAt, updated_at: sentAt }).eq('id', thread.id);
+    await service.from('message_threads').update({ status: 'waiting_client', needs_owner: false, last_message_at: sentAt, updated_at: sentAt }).eq('workspace_id', workspaceId).eq('id', thread.id);
     return { message: sentMessage, sent: true, duplicatePrevented: false };
   }
 }
