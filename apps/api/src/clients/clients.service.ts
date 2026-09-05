@@ -32,14 +32,8 @@ export class ClientsService {
     const email = dto.email?.trim().toLowerCase() || null;
     const phone = dto.phone?.trim() || null;
 
-    if (email || phone) {
-      let duplicateQuery = supabase.from('clients').select('id,display_name,email,phone').eq('workspace_id', workspaceId).limit(1);
-      if (email) duplicateQuery = duplicateQuery.eq('email', email);
-      else if (phone) duplicateQuery = duplicateQuery.eq('phone', phone);
-      const { data: duplicate, error: duplicateError } = await duplicateQuery;
-      if (duplicateError) throw new InternalServerErrorException(duplicateError.message);
-      if (duplicate?.length) throw new ConflictException(`A client with matching contact information already exists: ${duplicate[0].display_name}`);
-    }
+    if (!displayName) throw new ConflictException('Client display name is required');
+    await this.assertUniqueContact(supabase, workspaceId, email, phone);
 
     const { data, error } = await supabase
       .from('clients')
@@ -90,6 +84,8 @@ export class ClientsService {
 
   async update(user: AuthUser, workspaceId: string, clientId: string, dto: UpdateClientDto) {
     const supabase = createUserSupabaseClient(user.accessToken);
+    if (dto.displayName !== undefined && !dto.displayName.trim()) throw new ConflictException('Client display name is required');
+    await this.assertUniqueContact(supabase, workspaceId, dto.email?.trim().toLowerCase(), dto.phone?.trim(), clientId);
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (dto.firstName !== undefined) updates.first_name = dto.firstName?.trim() || null;
     if (dto.lastName !== undefined) updates.last_name = dto.lastName?.trim() || null;
@@ -152,6 +148,17 @@ export class ClientsService {
     }).select('*').single();
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  private async assertUniqueContact(supabase: ReturnType<typeof createUserSupabaseClient>, workspaceId: string, email?: string | null, phone?: string | null, excludeId?: string) {
+    for (const [field, value] of [['email', email], ['phone', phone]]) {
+      if (!value) continue;
+      let query = supabase.from('clients').select('id').eq('workspace_id', workspaceId).eq(field!, value).limit(1);
+      if (excludeId) query = query.neq('id', excludeId);
+      const { data, error } = await query;
+      if (error) throw new InternalServerErrorException(error.message);
+      if (data?.length) throw new ConflictException('A client with matching contact information already exists');
+    }
   }
 
   private async assertClient(user: AuthUser, workspaceId: string, clientId: string) {
