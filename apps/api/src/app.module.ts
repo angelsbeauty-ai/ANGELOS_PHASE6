@@ -20,10 +20,11 @@ import { FounderModule } from './founder/founder.module';
 import { ProductAnalyticsModule } from './product-analytics/product-analytics.module';
 import { BetaModule } from './beta/beta.module';
 import { BetaAccessGuard } from './common/guards/beta-access.guard';
+import { ApprovalsModule } from './approvals/approvals.module';
 
 @Module({
   imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule],
-  providers: [
+  providers: [ApprovalsModule,
     { provide: APP_GUARD, useClass: EmergencyReadOnlyGuard },
     { provide: APP_GUARD, useClass: SubscriptionAccessGuard },
     { provide: APP_GUARD, useClass: PlatformFeatureGuard },

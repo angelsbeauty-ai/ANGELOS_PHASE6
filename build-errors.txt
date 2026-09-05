@@ -1,0 +1,27 @@
+
+> @angelos/api@0.1.0 build
+> nest build
+
+[96msrc/approvals/approvals.controller.ts[0m:[93m11[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../auth/jwt-auth.guard' or its corresponding type declarations.
+
+[7m11[0m import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+[7m  [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/approvals/approvals.controller.ts[0m:[93m12[0m:[93m29[0m - [91merror[0m[90m TS2307: [0mCannot find module '../auth/current-user.decorator' or its corresponding type declarations.
+
+[7m12[0m import { CurrentUser } from '../auth/current-user.decorator';
+[7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/approvals/approvals.service.ts[0m:[93m29[0m:[93m7[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+
+[7m29[0m       process.env.SUPABASE_URL,
+[7m  [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+Found 3 error(s).
+
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /workspaces/ANGELOS_PHASE6/apps/api
+npm error workspace @angelos/api@0.1.0
+npm error location /workspaces/ANGELOS_PHASE6/apps/api
+npm error command failed
+npm error command sh -c nest build
