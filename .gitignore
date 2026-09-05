@@ -10,3 +10,5 @@ supabase/.temp/
 *.log
 !**/.env.example
 !**/.env.staging.example
+
+.flow1-hosted/

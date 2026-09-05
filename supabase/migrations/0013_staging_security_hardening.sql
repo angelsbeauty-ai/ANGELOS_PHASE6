@@ -29,7 +29,14 @@ revoke execute on function public.attach_beta_workspace() from public, anon, aut
 revoke execute on function public.seed_ai_workspace_defaults() from public, anon, authenticated;
 revoke execute on function public.seed_workspace_operational_controls() from public, anon, authenticated;
 revoke execute on function public.seed_workspace_subscription() from public, anon, authenticated;
-revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+-- This dashboard-installed helper is absent in fresh Supabase projects.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end
+$$;
 
 -- Cache auth.uid() once per statement in RLS policies to avoid per-row re-evaluation.
 drop policy if exists "members can view their own memberships" on public.workspace_memberships;
