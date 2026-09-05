@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { AiProviderService } from '../ai/ai-provider.service';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
@@ -6,6 +6,7 @@ import type { CreateDemoChannelDto } from './dto/create-demo-channel.dto';
 import type { IngestMessageDto } from './dto/ingest-message.dto';
 import type { CreateReplyDto } from './dto/create-reply.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
+import type { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
 import { ManualDemoMessagingAdapter } from './provider-adapter';
 
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
@@ -14,6 +15,89 @@ const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal
 export class MessagingService {
   private readonly manualAdapter = new ManualDemoMessagingAdapter();
   constructor(private readonly aiProvider: AiProviderService) {}
+
+  private async getWorkspaceMembership(user: AuthUser, workspaceId: string) {
+    const supabase = createUserSupabaseClient(user.accessToken);
+    const { data, error } = await supabase
+      .from('workspace_memberships')
+      .select('workspace_id,role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data) throw new NotFoundException('Workspace not found');
+    return data;
+  }
+
+  private async getClientControlDraft(user: AuthUser, workspaceId: string, messageId: string) {
+    const supabase = createUserSupabaseClient(user.accessToken);
+    const { data, error } = await supabase
+      .from('client_messages')
+      .select('id,thread_id,metadata')
+      .eq('workspace_id', workspaceId)
+      .eq('id', messageId)
+      .eq('direction', 'outbound')
+      .maybeSingle();
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data || data.metadata?.stage !== 'line_client_control_staging') {
+      throw new NotFoundException('Client Control draft not found');
+    }
+    return data;
+  }
+
+  async getClientControlReviewQueue(user: AuthUser, workspaceId: string) {
+    await this.getWorkspaceMembership(user, workspaceId);
+    const service = createServiceSupabaseClient();
+    const { data, error } = await service.rpc('get_client_control_review_queue', {
+      p_workspace_id: workspaceId,
+      p_limit: 50
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+    return data ?? { ok: true, items: [] };
+  }
+
+  async getClientControlContext(user: AuthUser, workspaceId: string, threadId: string) {
+    await this.getThread(user, workspaceId, threadId);
+    const service = createServiceSupabaseClient();
+    const { data, error } = await service.rpc('get_client_control_context', { p_thread_id: threadId });
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data?.ok) throw new NotFoundException('Client Control context not found');
+    return data;
+  }
+
+  async getClientControlReviewDetail(user: AuthUser, workspaceId: string, messageId: string) {
+    await this.getWorkspaceMembership(user, workspaceId);
+    await this.getClientControlDraft(user, workspaceId, messageId);
+    const service = createServiceSupabaseClient();
+    const { data, error } = await service.rpc('get_client_control_review_detail', {
+      p_workspace_id: workspaceId,
+      p_draft_message_id: messageId
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data?.ok) throw new NotFoundException('Client Control draft not found');
+    return data;
+  }
+
+  async reviewClientControlDraft(user: AuthUser, workspaceId: string, messageId: string, dto: ReviewClientControlDraftDto) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') {
+      throw new ForbiddenException('Only the workspace owner can review client-control drafts.');
+    }
+    await this.getClientControlDraft(user, workspaceId, messageId);
+    const service = createServiceSupabaseClient();
+    const { data, error } = await service.rpc('review_client_control_draft', {
+      p_message_id: messageId,
+      p_decision: dto.decision,
+      p_edited_body: dto.editedBody?.trim() || null,
+      p_english_meaning: dto.englishMeaning?.trim() || null,
+      p_reason: dto.reason?.trim() || null,
+      p_actor_user_id: user.id,
+      p_actor_type: 'angel'
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data?.ok) throw new BadRequestException(data?.reason ?? 'Client Control review was not accepted');
+    return data;
+  }
 
   async listChannels(user: AuthUser, workspaceId: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
@@ -275,4 +359,3 @@ function isSensitive(text: string, intent: string) {
 function looksLikePhishing(text: string) {
   return /(verify|confirm|unlock|suspend).*account/i.test(text) || /(password|one[- ]?time code|otp|gift card|crypto wallet)/i.test(text) || /(click|open).*https?:\/\//i.test(text);
 }
-

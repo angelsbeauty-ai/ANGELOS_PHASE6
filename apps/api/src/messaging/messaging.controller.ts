@@ -9,6 +9,7 @@ import { CreateReplyDto } from './dto/create-reply.dto';
 import { UpdateThreadDto } from './dto/update-thread.dto';
 import { InternalNoteDto } from './dto/internal-note.dto';
 import { TranslateMessageDto } from './dto/translate-message.dto';
+import { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
 
 @Controller('workspaces/:workspaceId/messaging')
 @UseGuards(SupabaseAuthGuard)
@@ -17,7 +18,11 @@ export class MessagingController {
 
   @Get('channels') listChannels(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.listChannels(user, workspaceId); }
   @Post('channels/demo') createDemoChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Body() dto: CreateDemoChannelDto) { return this.messaging.createDemoChannel(user, workspaceId, dto); }
+  @Get('client-control/review-queue') getClientControlReviewQueue(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.getClientControlReviewQueue(user, workspaceId); }
+  @Get('client-control/drafts/:messageId') getClientControlReviewDetail(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('messageId') messageId: string) { return this.messaging.getClientControlReviewDetail(user, workspaceId, messageId); }
+  @Post('client-control/drafts/:messageId/review') reviewClientControlDraft(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('messageId') messageId: string, @Body() dto: ReviewClientControlDraftDto) { return this.messaging.reviewClientControlDraft(user, workspaceId, messageId, dto); }
   @Get('threads') listThreads(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.listThreads(user, workspaceId); }
+  @Get('threads/:threadId/client-control-context') getClientControlContext(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.getClientControlContext(user, workspaceId, threadId); }
   @Get('threads/:threadId') getThread(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.getThread(user, workspaceId, threadId); }
   @Post('ingest-demo') ingestDemo(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Body() dto: IngestMessageDto) { return this.messaging.ingestDemoMessage(user, workspaceId, dto); }
   @Post('threads/:threadId/ai-draft') draftReply(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.draftReply(user, workspaceId, threadId); }

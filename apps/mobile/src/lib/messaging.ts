@@ -32,6 +32,93 @@ export interface ClientMessage {
   sent_at: string | null;
 }
 
+export interface ClientControlAnalysis {
+  intent: string;
+  urgency: string;
+  sentiment: string;
+  treatment_or_topic: string;
+  requested_date_time: string | null;
+  risk_flags: string[];
+  sensitive: boolean;
+  needs_angel: boolean;
+  recommended_action: string;
+  recommended_next_action?: string;
+  detected_language: 'ja' | 'en' | 'mixed' | 'unknown';
+  client_message_english_meaning: string;
+  translation_method: string;
+  send_released: false;
+  [key: string]: unknown;
+}
+
+export interface ClientControlReviewItem {
+  draft_message_id: string;
+  thread_id: string;
+  client: { id: string; display_name: string; language: string; status: string } | null;
+  suggested_reply: string;
+  english_meaning: string;
+  analysis: ClientControlAnalysis;
+  review_status: string;
+  created_at: string;
+  approval_required: true;
+  send_released: false;
+}
+
+export interface ClientControlReviewQueue {
+  ok: boolean;
+  items: ClientControlReviewItem[];
+}
+
+export interface ClientControlReviewDetail {
+  ok: boolean;
+  draft: ClientControlReviewItem & {
+    message_status: string;
+    sensitive: boolean;
+  };
+  source_message: {
+    message_id: string;
+    original_body: string;
+    original_language: string | null;
+    english_meaning: string | null;
+    received_at: string;
+  } | null;
+  client: ClientControlReviewItem['client'] & {
+    do_not_auto_message?: boolean;
+  };
+  thread: {
+    id: string;
+    status: string;
+    intent: string;
+    priority: string;
+    needs_owner: boolean;
+  };
+  client_context: {
+    recent_messages?: Array<{
+      id: string;
+      direction: string;
+      body: string;
+      original_language?: string | null;
+      translated_body?: string | null;
+      created_at: string;
+    }>;
+    recent_appointments?: Array<{
+      service_name: string;
+      start_at: string;
+      end_at: string;
+      status: string;
+    }>;
+    [key: string]: unknown;
+  };
+  audit_history: Array<{
+    event_type: string;
+    actor_type: string;
+    actor_user_id: string | null;
+    evidence: Record<string, unknown>;
+    created_at: string;
+  }>;
+}
+
+export type ClientControlReviewDecision = 'approve' | 'edit' | 'reject';
+
 export interface MessageThreadDetail {
   thread: MessageThreadSummary & { external_thread_id: string };
   messages: ClientMessage[];
@@ -50,6 +137,30 @@ export function createDemoMessagingChannel(workspaceId: string) {
 
 export function listMessageThreads(workspaceId: string) {
   return apiFetch<MessageThreadSummary[]>(`/workspaces/${workspaceId}/messaging/threads`);
+}
+
+export function getClientControlReviewQueue(workspaceId: string) {
+  return apiFetch<ClientControlReviewQueue>('/workspaces/' + workspaceId + '/messaging/client-control/review-queue');
+}
+
+export function getClientControlReviewDetail(workspaceId: string, messageId: string) {
+  return apiFetch<ClientControlReviewDetail>('/workspaces/' + workspaceId + '/messaging/client-control/drafts/' + messageId);
+}
+
+export function reviewClientControlDraft(
+  workspaceId: string,
+  messageId: string,
+  payload: {
+    decision: ClientControlReviewDecision;
+    editedBody?: string;
+    englishMeaning?: string;
+    reason?: string;
+  }
+) {
+  return apiFetch<{ ok: boolean; decision: ClientControlReviewDecision; status: string; send_released: false }>(
+    '/workspaces/' + workspaceId + '/messaging/client-control/drafts/' + messageId + '/review',
+    { method: 'POST', body: JSON.stringify(payload) }
+  );
 }
 
 export function getMessageThread(workspaceId: string, threadId: string) {

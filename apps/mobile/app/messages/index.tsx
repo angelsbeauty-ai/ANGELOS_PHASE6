@@ -69,6 +69,16 @@ export default function MessagesScreen() {
       </Pressable>
     </Card>
 
+    <Link href="/messages/review" asChild>
+      <Pressable>
+        <Card>
+          <SectionTitle>Client Draft Review</SectionTitle>
+          <SupportText>Review staged AI drafts, translations and analysis. Approving a draft keeps sending locked.</SupportText>
+          <PrimaryActionLabel>Open Draft Review</PrimaryActionLabel>
+        </Card>
+      </Pressable>
+    </Link>
+
     {busy ? <Card><BodyText>Loading messages...</BodyText></Card> : null}
     {!busy && threads.length === 0 ? (
       <Card>
