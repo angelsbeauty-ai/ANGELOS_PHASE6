@@ -11,7 +11,9 @@ export class EmergencyReadOnlyGuard implements CanActivate {
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
 
-    const path = String(request.originalUrl ?? request.url ?? '');
+    // Match on the path only. originalUrl carries the query string, so matching against it let a
+    // caller opt out of the pause with any request whose query contained one of these strings.
+    const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];
     // Diagnostics and owner recovery controls must remain available during an emergency pause.
     if (path.includes('/system-health') || path.includes('/subscription') || path.includes('/product-analytics') || path.includes('/beta/')) return true;
     // AI chat/analyze remains available. The AI service separately blocks action approval/mutations.

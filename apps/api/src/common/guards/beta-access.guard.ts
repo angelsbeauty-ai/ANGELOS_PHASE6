@@ -9,7 +9,9 @@ export class BetaAccessGuard implements CanActivate {
     if (['GET','HEAD','OPTIONS'].includes(method)) return true;
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
-    const path = String(request.originalUrl ?? request.url ?? '');
+    // Path only: endsWith() against originalUrl silently stopped matching whenever the request
+    // carried a query string.
+    const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];
     // Revoked/expired testers can still tell the Founder what happened.
     if (path.includes('/beta/') && path.endsWith('/feedback')) return true;
 

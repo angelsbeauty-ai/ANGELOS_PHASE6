@@ -9,7 +9,9 @@ export class SubscriptionAccessGuard implements CanActivate {
     if (['GET','HEAD','OPTIONS'].includes(method)) return true;
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
-    const path = String(request.originalUrl ?? request.url ?? '');
+    // Path only: originalUrl carries the query string, so a request with ?x=/subscription used to
+    // slip past the read-only/expired gate entirely.
+    const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];
     if (path.includes('/subscription') || path.includes('/system-health') || path.includes('/product-analytics') || path.includes('/beta/')) return true;
 
     const header = String(request.headers?.authorization ?? '');

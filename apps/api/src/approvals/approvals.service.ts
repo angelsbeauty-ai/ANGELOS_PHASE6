@@ -64,6 +64,30 @@ export class ApprovalsService {
     return memberships[0];
   }
 
+  /**
+   * The global guards (emergency read-only, subscription, platform feature, beta) all key off
+   * `request.params.workspaceId` and return true when it is absent. These routes are deliberately
+   * flat (/approvals/*) so the existing n8n workflows keep working, which means those guards never
+   * fire here. Deciding an approval is the one operation on this controller that can reach a real
+   * client, so it enforces the emergency pause itself rather than relying on a guard that cannot
+   * see it.
+   */
+  private async assertNotEmergencyPaused(user: AuthUser, workspaceId: string) {
+    const supabase = createUserSupabaseClient(user.accessToken);
+    const { data, error } = await supabase
+      .from('workspace_operational_controls')
+      .select('emergency_read_only')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    if (data?.emergency_read_only) {
+      throw new ConflictException(
+        'AngelOS is in emergency read-only mode. Approvals cannot be dispatched until the owner resumes them.'
+      );
+    }
+  }
+
   private async createApproval(user: AuthUser, payload: ApprovalPayload, fallbackAction: string) {
     const workspaceId = await this.resolveWorkspaceId(user, payload.workspaceId);
     const supabase = createServiceSupabaseClient();
@@ -140,6 +164,7 @@ export class ApprovalsService {
    */
   async submitApprovalDecision(user: AuthUser, decision: ApprovalDecision, workspaceId?: string) {
     const scopedWorkspaceId = await this.resolveWorkspaceId(user, workspaceId);
+    await this.assertNotEmergencyPaused(user, scopedWorkspaceId);
     const supabase = createServiceSupabaseClient();
 
     const { data: existing, error: fetchError } = await supabase

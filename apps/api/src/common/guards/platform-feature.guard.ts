@@ -9,7 +9,9 @@ export class PlatformFeatureGuard implements CanActivate {
     if (['GET','HEAD','OPTIONS'].includes(method)) return true;
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
-    const path = String(request.originalUrl ?? request.url ?? '');
+    // Path only. featureFor() uses endsWith(), which stopped matching as soon as a request carried
+    // a query string — so ?x=1 on an approve-send or publish call skipped the feature flag check.
+    const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];
     const featureKey = this.featureFor(path, method);
     if (!featureKey) return true;
 
