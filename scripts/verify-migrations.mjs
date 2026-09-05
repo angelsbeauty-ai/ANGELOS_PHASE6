@@ -12,7 +12,8 @@ if (!files.some((name) => name === '0013_staging_security_hardening.sql')) {
 
 files.forEach((name, index) => {
   const expected = String(index + 1).padStart(4, '0');
-  if (!name.startsWith(expected + '_')) throw new Error(`Migration sequence broken at ${name}; expected ${expected}_...`);
+  if (index < 13 ? !name.startsWith(expected + '_') : !/^\d{14}_[a-z0-9_]+\.sql$/.test(name)) throw new Error(`Invalid migration sequence/name: ${name}`);
+  if (index > 13 && name.slice(0, 14) === files[index - 1].slice(0, 14)) throw new Error(`Duplicate migration timestamp: ${name}`);
   const sql = fs.readFileSync(path.join(migrationDir, name), 'utf8');
   if (!sql.trim()) throw new Error(`${name} is empty`);
 });
