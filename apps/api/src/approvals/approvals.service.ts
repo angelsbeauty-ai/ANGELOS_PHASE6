@@ -85,7 +85,25 @@ export class ApprovalsService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      // unique_source_per_workspace (workspace_id, type, source_id). A redelivered webhook is
+      // expected, not an error: return the approval already queued instead of a 500, and do not
+      // re-notify. Creating an approval is therefore idempotent per source message.
+      if (error.code === '23505') {
+        const { data: existing, error: existingError } = await supabase
+          .from('approvals')
+          .select('*')
+          .eq('workspace_id', workspaceId)
+          .eq('type', payload.type)
+          .eq('source_id', payload.sourceId)
+          .maybeSingle();
+
+        if (existingError) throw new InternalServerErrorException(existingError.message);
+        if (existing) return existing;
+      }
+
+      throw new InternalServerErrorException(error.message);
+    }
 
     await this.notifyApprovalNeeded(approval);
 
