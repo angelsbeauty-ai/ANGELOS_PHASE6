@@ -123,7 +123,7 @@ export async function startHarness() {
           } catch (error) { return { data:null,error:{code:error.code,message:error.message} }; }
         },
         from(table) {
-          if (!['workspace_memberships','workspaces','clients','messaging_channels','client_channel_identities','message_threads','client_messages','message_internal_notes','approvals','approval_history'].includes(table)) throw new Error(`Unexpected table: ${table}`);
+          if (!['workspace_memberships','workspaces','clients','messaging_channels','client_channel_identities','message_threads','client_messages','message_internal_notes','approvals','approval_history','workspace_operational_controls'].includes(table)) throw new Error(`Unexpected table: ${table}`);
           let action='select', payload, select='*', filters=[], order, limit, single=false, required=false, conflict;
           const q = {
             select(value='*') { select=value; return q; },

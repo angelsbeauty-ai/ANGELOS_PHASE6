@@ -4,7 +4,8 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  NotFoundException
+  NotFoundException,
+  ServiceUnavailableException
 } from '@nestjs/common';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import type { AuthUser } from '../auth/auth-user';
@@ -82,8 +83,12 @@ export class ApprovalsService {
       .eq('workspace_id', workspaceId)
       .maybeSingle();
 
-    if (error) throw new InternalServerErrorException(error.message);
-    if (data?.emergency_read_only) {
+    // Fail closed, matching EmergencyReadOnlyGuard: if the controls row is unreadable or absent we
+    // cannot prove the workspace is not paused, and dispatching an approval is not reversible.
+    if (error || !data) {
+      throw new ServiceUnavailableException('Operational safety controls unavailable');
+    }
+    if (data.emergency_read_only) {
       throw new ConflictException(
         'AngelOS is in emergency read-only mode. Approvals cannot be dispatched until the owner resumes them.'
       );

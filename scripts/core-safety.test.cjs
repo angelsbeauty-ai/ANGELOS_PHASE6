@@ -108,7 +108,7 @@ test('duplicate inbound messages stop before client or thread writes', async () 
 test('booking terminal states cannot be resurrected', async () => {
   for (const status of ['cancelled', 'completed', 'no_show']) {
     const memory = database({ appointments: [{ id: 'booking', workspace_id: workspace, status }] });
-    await assert.rejects(new BookingsService({}).confirm(user, workspace, 'booking'), /Invalid appointment lifecycle/);
+    await assert.rejects(new BookingsService({}).confirm(user, workspace, 'booking'), /can no longer be marked/);
     assert.equal(memory.calls.filter(c => c.action !== 'select').length, 0);
   }
 });
