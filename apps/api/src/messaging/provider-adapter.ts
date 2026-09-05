@@ -19,7 +19,7 @@ export class ManualDemoMessagingAdapter implements MessagingProviderAdapter {
   async send(input: MessagingSendInput): Promise<MessagingSendResult> {
     return {
       status: 'sent',
-      externalMessageId: `demo_${Date.now()}`,
+      externalMessageId: `demo_${input.idempotencyKey}`,
       raw: { transport: 'manual-demo', idempotencyKey: input.idempotencyKey }
     };
   }

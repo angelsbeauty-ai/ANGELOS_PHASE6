@@ -23,7 +23,7 @@ export class ApprovalsController {
     @Body()
     body: {
       sourceId: string;
-      sourceChannel: 'line' | 'instagram' | 'facebook' | 'tiktok';
+      sourceChannel: 'line' | 'instagram' | 'facebook' | 'tiktok' | 'manual';
       content: string;
       clientId: string;
       clientName: string;
@@ -141,6 +141,11 @@ export class ApprovalsController {
     @Query('workspaceId') workspaceId?: string
   ) {
     return this.approvalsService.getPendingApprovals(user, parseInt(limit, 10), workspaceId);
+  }
+
+  @Post(':id/execute')
+  executeMessage(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { workspaceId?: string }) {
+    return this.approvalsService.executeMessageApproval(user, id, body.workspaceId);
   }
 
   /**

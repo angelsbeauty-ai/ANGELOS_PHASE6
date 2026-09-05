@@ -120,7 +120,7 @@ export default function ApprovalsScreen() {
     setSubmitting(true);
 
     try {
-      await apiFetch('/approvals/decide', {
+      const result = await apiFetch<{ delivery?: { status: 'sent' | 'failed' | 'unknown'; duplicatePrevented: boolean } | null }>('/approvals/decide', {
         method: 'POST',
         body: JSON.stringify({
           approvalId: selectedApproval.id,
@@ -141,7 +141,10 @@ export default function ApprovalsScreen() {
       setDecisionNotes('');
       setRevisedContent('');
 
-      Alert.alert('Success', `Approval ${decision}`);
+      const deliveryMessage = result.delivery?.status === 'sent'
+        ? 'Synthetic delivery recorded. Duplicate approvals will not resend it.'
+        : result.delivery ? 'Delivery needs review. This approval will not resend the message.' : `Approval ${decision}`;
+      Alert.alert('Approval recorded', deliveryMessage);
     } catch (error) {
       console.error('Failed to submit decision:', error);
       Alert.alert('Error', 'Failed to submit decision');

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { AiProviderService } from '../ai/ai-provider.service';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
@@ -7,13 +7,14 @@ import type { IngestMessageDto } from './dto/ingest-message.dto';
 import type { CreateReplyDto } from './dto/create-reply.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
 import { ManualDemoMessagingAdapter } from './provider-adapter';
+import { flow1StagingEnabled, StagingMessageExecutionService } from './staging-message-execution.service';
 
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
 
 @Injectable()
 export class MessagingService {
   private readonly manualAdapter = new ManualDemoMessagingAdapter();
-  constructor(private readonly aiProvider: AiProviderService) {}
+  constructor(private readonly aiProvider: AiProviderService, @Optional() private readonly stagingExecution?: StagingMessageExecutionService) {}
 
   async listChannels(user: AuthUser, workspaceId: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
@@ -162,6 +163,14 @@ export class MessagingService {
     const response = await this.aiProvider.generate({ instructions, input: `Client: ${latestInbound.body}` });
     const sensitive = Boolean(latestInbound.sensitive) || thread.intent === 'complaint' || !client;
     const service = createServiceSupabaseClient();
+    if (flow1StagingEnabled(workspaceId) && this.stagingExecution) {
+      // Key the draft + approval transaction to the inbound message. Retrying draft
+      // generation cannot create several separately approvable replies to it.
+      const approval = await this.stagingExecution.prepare(user, workspaceId, latestInbound.id, response.text, client?.id, thread.channel.provider);
+      const saved = await service.from('client_messages').select('*').eq('workspace_id', workspaceId).eq('id', approval.context.outbound_message_id).single();
+      if (saved.error) throw new InternalServerErrorException(saved.error.message);
+      return { message: saved.data, approval, requiresApproval: true, reason: 'Staging reply requires owner approval.' };
+    }
     const { data, error } = await service.from('client_messages').insert({
       workspace_id: workspaceId, thread_id: threadId, client_id: client?.id ?? null,
       direction: 'outbound', sender_type: 'ai', body: response.text,
@@ -235,6 +244,7 @@ export class MessagingService {
     if (message.status === 'sent') return { message, sent: true, duplicatePrevented: true };
     const thread = (message as any).thread;
     if (!thread?.channel) throw new NotFoundException('Messaging channel not found');
+    if (thread.channel.capabilities?.flow1_test === true) throw new ConflictException('Synthetic Flow 1 messages must use approval execution');
     if (!explicitOwnerApproval && thread.client?.do_not_auto_message && message.sender_type === 'ai') throw new ConflictException('Client is marked Do Not Auto-Message.');
     if (!explicitOwnerApproval && message.sensitive && message.sender_type === 'ai') throw new ConflictException('Sensitive AI draft requires owner approval before sending.');
     if (thread.channel.status !== 'connected') throw new ConflictException('Messaging channel is not connected.');
