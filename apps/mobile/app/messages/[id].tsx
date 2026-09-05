@@ -40,6 +40,7 @@ export default function MessageThreadScreen() {
 
   const latestPendingAi = useMemo(() => detail?.messages.slice().reverse().find((m) => m.sender_type === 'ai' && m.status === 'pending_approval') ?? null, [detail]);
   const latestInbound = useMemo(() => detail?.messages.slice().reverse().find((m) => m.direction === 'inbound') ?? null, [detail]);
+  const transportConnected = detail?.thread.channel?.provider === 'manual';
 
   async function draftWithAi() {
     if (!workspaceId || !id) return;
@@ -56,14 +57,24 @@ export default function MessageThreadScreen() {
     } catch (error) { Alert.alert('Could not translate', error instanceof Error ? error.message : 'Unknown error'); }
   }
 
-  async function sendOwnerReply() {
+  async function saveOrSendOwnerReply() {
     if (!workspaceId || !id || !reply.trim()) return;
-    try { await createMessageReply(workspaceId, id, reply.trim(), true); setReply(''); await load(); }
-    catch (error) { Alert.alert('Could not send', error instanceof Error ? error.message : 'Unknown error'); }
+    try {
+      await createMessageReply(workspaceId, id, reply.trim(), transportConnected);
+      if (!transportConnected) {
+        Alert.alert('Draft saved', 'This channel is visible in AngelOS, but live outbound transport is not connected yet. Nothing was sent to the client.');
+      }
+      setReply('');
+      await load();
+    } catch (error) { Alert.alert(transportConnected ? 'Could not send' : 'Could not save draft', error instanceof Error ? error.message : 'Unknown error'); }
   }
 
   async function approveAiDraft() {
     if (!workspaceId || !latestPendingAi) return;
+    if (!transportConnected) {
+      Alert.alert('Live send not connected', 'Approval can be reviewed here, but this channel does not yet have a verified outbound transport. Nothing was sent.');
+      return;
+    }
     try { await approveAndSendMessage(workspaceId, latestPendingAi.id); setReply(''); await load(); }
     catch (error) { Alert.alert('Could not send AI draft', error instanceof Error ? error.message : 'Unknown error'); }
   }
@@ -91,6 +102,14 @@ export default function MessageThreadScreen() {
         <Link href={{ pathname: '/ai', params: { screen: 'messages', entityType: 'message_thread', entityId: detail.thread.id, entityLabel: title } }} style={styles.aiLink}>Ask AI</Link>
       </View>
     </Card>
+
+    {!transportConnected ? (
+      <Card>
+        <Pill tone="warning">Outbound locked</Pill>
+        <SectionTitle>{detail.thread.channel?.display_name ?? 'Channel'} is read/control only</SectionTitle>
+        <SupportText>AngelOS can show the conversation, create drafts, translate, and save notes. Live outbound transport for this channel is not verified yet, so send actions stay locked and nothing is presented as sent.</SupportText>
+      </Card>
+    ) : null}
 
     {(detail.thread.intent === 'booking' || detail.thread.intent === 'reschedule') ? (
       <Link href={{ pathname: '/calendar', params: { focusLabel: `Checking availability for ${title}`, messageThreadId: detail.thread.id } }} asChild>
@@ -146,12 +165,12 @@ export default function MessageThreadScreen() {
         style={styles.input}
       />
       {latestPendingAi ? (
-        <Pressable onPress={() => void approveAiDraft()} style={styles.primaryAction}>
-          <PrimaryActionLabel>Approve AI Draft & Send</PrimaryActionLabel>
+        <Pressable onPress={() => void approveAiDraft()} disabled={!transportConnected} style={[styles.primaryAction, !transportConnected && styles.disabledAction]}>
+          <PrimaryActionLabel>{transportConnected ? 'Approve AI Draft & Send' : 'Approve & Send Locked'}</PrimaryActionLabel>
         </Pressable>
       ) : null}
-      <Pressable onPress={() => void sendOwnerReply()} disabled={!reply.trim()} style={styles.primaryAction}>
-        <SecondaryActionLabel>Send As Owner</SecondaryActionLabel>
+      <Pressable onPress={() => void saveOrSendOwnerReply()} disabled={!reply.trim()} style={styles.primaryAction}>
+        <SecondaryActionLabel>{transportConnected ? 'Send As Owner' : 'Save Owner Draft'}</SecondaryActionLabel>
       </Pressable>
     </Card>
 
@@ -204,5 +223,6 @@ const styles = StyleSheet.create({
     padding: ui.spacing.sm,
     textAlignVertical: 'top'
   },
-  primaryAction: { marginTop: ui.spacing.xs }
+  primaryAction: { marginTop: ui.spacing.xs },
+  disabledAction: { opacity: 0.45 }
 });
