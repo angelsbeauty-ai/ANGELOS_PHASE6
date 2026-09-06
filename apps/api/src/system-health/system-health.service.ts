@@ -65,7 +65,16 @@ export class SystemHealthService {
     if (controlsError || !controls) throw new InternalServerErrorException('Operational safety controls unavailable');
     if (controls.emergency_read_only) findings.push({ component: 'operations', status: 'paused', summary: 'Emergency read-only mode is enabled.', actionPath: '/system-health', impact: { writesPaused: true } });
     if (controls?.pause_ai_actions) findings.push({ component: 'ai', capability: 'actions', status: 'paused', summary: 'AI actions are paused by the owner.', actionPath: '/system-health', impact: { chatStillAvailable: true, mutationsPaused: true } });
-    else if (process.env.OPENAI_API_KEY) findings.push({ component: 'ai', capability: 'actions', status: 'healthy', summary: 'AI action layer is configured.', details: { externalProviderPinged: false } });
+    // A key alone does not mean real AI is running: AI_PROVIDER_MODE decides which provider is
+    // used, and anything other than 'openai' serves canned mock responses. Reporting "healthy"
+    // while every answer is a mock is the more dangerous failure, so it is called out explicitly.
+    else if ((process.env.AI_PROVIDER_MODE ?? 'mock') !== 'openai') findings.push({
+      component: 'ai', capability: 'actions', status: 'needs_attention',
+      summary: `AI is running in ${process.env.AI_PROVIDER_MODE ?? 'mock'} mode, so replies and actions are simulated, not real.`,
+      actionPath: '/system-health', details: { externalProviderPinged: false, providerMode: process.env.AI_PROVIDER_MODE ?? 'mock' },
+      attention: { severity: 'today', category: 'system', dedupeKey: 'ai:provider_mode_not_live', title: 'AI is in mock mode', summary: 'AngelOS is answering with simulated AI output. Set AI_PROVIDER_MODE=openai for real responses.', sourceType: 'ai_provider' }
+    });
+    else if (process.env.OPENAI_API_KEY) findings.push({ component: 'ai', capability: 'actions', status: 'healthy', summary: 'AI action layer is configured.', details: { externalProviderPinged: false, providerMode: 'openai' } });
     else findings.push({
       component: 'ai', capability: 'actions', status: 'needs_attention', summary: 'AI provider key is not configured in this environment.', actionPath: '/system-health', details: { externalProviderPinged: false },
       attention: { severity: 'today', category: 'system', dedupeKey: 'ai:provider_not_configured', title: 'AI provider needs configuration', summary: 'AngelOS can load the app, but AI responses/actions will not work until the server-side AI provider key is configured.', sourceType: 'ai_provider' }

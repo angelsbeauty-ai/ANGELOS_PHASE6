@@ -109,7 +109,28 @@ export class BetaService {
     if (error) throw new InternalServerErrorException(error.message);
     if (!tester) throw new NotFoundException('Active beta tester not found.');
     if (tester.workspace_id) {
-      await service.from('workspace_subscriptions').update({ status: 'read_only', read_only_started_at: now.toISOString(), read_only_until: new Date(now.getTime() + 60 * 86400000).toISOString(), updated_at: now.toISOString() }).eq('workspace_id', tester.workspace_id);
+      // Only downgrade a workspace that is still on beta terms. Without the status guard this
+      // force-wrote read_only over any subscription, so revoking a tester who had since started
+      // paying silently downgraded a paying customer and restarted their 60-day window on every
+      // repeat call. The result was also discarded, so a failed downgrade still returned 200.
+      const { data: downgraded, error: downgradeError } = await service
+        .from('workspace_subscriptions')
+        .update({ status: 'read_only', read_only_started_at: now.toISOString(), read_only_until: new Date(now.getTime() + 60 * 86400000).toISOString(), updated_at: now.toISOString() })
+        .eq('workspace_id', tester.workspace_id)
+        .eq('status', 'trialing')
+        .select('workspace_id,status')
+        .maybeSingle();
+      if (downgradeError) throw new InternalServerErrorException(downgradeError.message);
+      if (downgraded) {
+        // Same audit trail the subscriptions module writes for every other status change.
+        const { error: eventError } = await service.from('subscription_events').insert({
+          workspace_id: tester.workspace_id,
+          event_type: 'beta_revoked',
+          details: { toStatus: 'read_only', reason: 'Beta tester access revoked by founder.' }
+        });
+        if (eventError) throw new InternalServerErrorException(eventError.message);
+      }
+      return { ...tester, subscriptionDowngraded: Boolean(downgraded) };
     }
     return tester;
   }

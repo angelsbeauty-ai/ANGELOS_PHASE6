@@ -33,6 +33,7 @@ function database(seed = {}, failure) {
       eq(k, v) { filters.push(r => r[k] === v); return q; },
       neq(k, v) { filters.push(r => r[k] !== v); return q; },
       in(k, v) { filters.push(r => v.includes(r[k])); return q; },
+      is(k, v) { filters.push(r => (r[k] ?? null) === v); return q; },
       gte(k, v) { filters.push(r => r[k] >= v); return q; }, lte(k, v) { filters.push(r => r[k] <= v); return q; }, lt(k, v) { filters.push(r => r[k] < v); return q; }, gt(k, v) { filters.push(r => r[k] > v); return q; },
       single() { single = true; return q; }, maybeSingle() { single = true; return q; },
       insert(p) { action = 'insert'; payload = p; return q; },
@@ -352,4 +353,45 @@ test('client control staging rejects an unparseable assistant response', async (
   });
   const service = new MessagingService({ generate: async () => ({ text: 'I cannot help with that.', provider: 'mock', model: 'test' }) });
   await assert.rejects(service.stageClientControlDraft(user, workspace, 'thread'), /did not return a usable analysis/);
+});
+test('revoking a beta tester cannot downgrade a paying workspace', async () => {
+  const { BetaService } = require('../apps/api/dist/beta/beta.service');
+  const memory = database({
+    beta_testers: [{ user_id: 'tester', workspace_id: 'paying-workspace', revoked_at: null, cohort: 'a' }],
+    workspace_subscriptions: [{ workspace_id: 'paying-workspace', status: 'active' }]
+  });
+  const result = await new BetaService().revokeTester('tester');
+  assert.equal(result.subscriptionDowngraded, false, 'an active (paying) subscription must be left alone');
+  assert.equal(memory.rows.workspace_subscriptions[0].status, 'active');
+  assert.equal((memory.rows.subscription_events ?? []).length, 0);
+});
+test('revoking a beta tester downgrades a trialing workspace and logs it', async () => {
+  const { BetaService } = require('../apps/api/dist/beta/beta.service');
+  const memory = database({
+    beta_testers: [{ user_id: 'tester', workspace_id: 'beta-workspace', revoked_at: null, cohort: 'a' }],
+    workspace_subscriptions: [{ workspace_id: 'beta-workspace', status: 'trialing' }]
+  });
+  const result = await new BetaService().revokeTester('tester');
+  assert.equal(result.subscriptionDowngraded, true);
+  assert.equal(memory.rows.workspace_subscriptions[0].status, 'read_only');
+  assert.equal(memory.rows.subscription_events.length, 1, 'the status change must leave an audit row');
+  assert.equal(memory.rows.subscription_events[0].event_type, 'beta_revoked');
+});
+test('system health does not report mock AI as healthy', async () => {
+  const saved = { mode: process.env.AI_PROVIDER_MODE, key: process.env.OPENAI_API_KEY };
+  try {
+    process.env.OPENAI_API_KEY = 'synthetic-key';
+    process.env.AI_PROVIDER_MODE = 'mock';
+    database({ workspace_operational_controls: [{ workspace_id: workspace, emergency_read_only: false, pause_ai_actions: false }], workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'owner' }] });
+    const report = await new SystemHealthService().runHealthCheck(user, workspace).catch(e => e);
+    const findings = report?.findings ?? report?.components ?? [];
+    const ai = findings.find?.(f => f.component === 'ai');
+    if (ai) {
+      assert.notEqual(ai.status, 'healthy', 'mock mode must not be reported healthy');
+      assert.match(ai.summary, /simulated|mock/i);
+    }
+  } finally {
+    saved.mode === undefined ? delete process.env.AI_PROVIDER_MODE : process.env.AI_PROVIDER_MODE = saved.mode;
+    saved.key === undefined ? delete process.env.OPENAI_API_KEY : process.env.OPENAI_API_KEY = saved.key;
+  }
 });
