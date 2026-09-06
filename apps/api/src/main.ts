@@ -5,7 +5,10 @@ import { validateRuntimeEnvironment } from './config/env';
 
 async function bootstrap() {
   const runtime = validateRuntimeEnvironment();
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // rawBody: request.rawBody is populated alongside the normal parsed body for every request.
+  // The Meta webhook needs the exact bytes Meta signed to verify X-Hub-Signature-256; a
+  // re-serialized JSON body would not reproduce the same signature.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const express = app.getHttpAdapter().getInstance();
 
   express.disable('x-powered-by');

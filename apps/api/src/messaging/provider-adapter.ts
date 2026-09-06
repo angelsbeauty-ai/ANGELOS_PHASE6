@@ -2,6 +2,11 @@ export interface MessagingSendInput {
   externalThreadId: string;
   body: string;
   idempotencyKey: string;
+  // Only needed by adapters that must load live credentials to send (e.g. Meta). The manual
+  // demo adapter and Flow 1's synthetic adapter both ignore these.
+  workspaceId?: string;
+  provider?: string;
+  externalAccountId?: string;
 }
 
 export interface MessagingSendResult {

@@ -7,8 +7,9 @@ import type { IngestMessageDto } from './dto/ingest-message.dto';
 import type { CreateReplyDto } from './dto/create-reply.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
 import type { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
-import { ManualDemoMessagingAdapter } from './provider-adapter';
+import { ManualDemoMessagingAdapter, type MessagingProviderAdapter } from './provider-adapter';
 import { flow1StagingEnabled, StagingMessageExecutionService } from './staging-message-execution.service';
+import { MetaMessagingAdapter, metaTransportEnabled } from './meta-transport';
 
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
 
@@ -333,7 +334,8 @@ export class MessagingService {
     if (!explicitOwnerApproval && message.sensitive && message.sender_type === 'ai') throw new ConflictException('Sensitive AI draft requires owner approval before sending.');
     if (thread.channel.status !== 'connected') throw new ConflictException('Messaging channel is not connected.');
     if (!['draft', 'pending_approval', 'queued', 'failed'].includes(message.status)) throw new ConflictException('Message is not in a sendable state.');
-    if (thread.channel.provider !== 'manual') throw new ConflictException('Live provider transport is not connected yet. This Sprint 5 build safely stops instead of pretending the message was sent.');
+    const adapter = this.resolveAdapter(thread.channel.provider);
+    if (!adapter) throw new ConflictException('Live provider transport is not connected yet. This Sprint 5 build safely stops instead of pretending the message was sent.');
 
     const idempotencyKey = `message:${message.id}`;
     const service = createServiceSupabaseClient();
@@ -350,7 +352,14 @@ export class MessagingService {
       throw new InternalServerErrorException(queued.error.message);
     }
 
-    const result = await this.manualAdapter.send({ externalThreadId: thread.external_thread_id, body: message.body, idempotencyKey });
+    const result = await adapter.send({
+      externalThreadId: thread.external_thread_id,
+      body: message.body,
+      idempotencyKey,
+      workspaceId,
+      provider: thread.channel.provider,
+      externalAccountId: thread.channel.external_account_id
+    });
     const { error: attemptError } = await service.from('message_send_attempts').update({
       status: result.status, provider_response: result.raw ?? null, error_message: result.error ?? null
     }).eq('workspace_id', workspaceId).eq('idempotency_key', idempotencyKey);
@@ -364,6 +373,92 @@ export class MessagingService {
     if (updateError) throw new InternalServerErrorException(updateError.message);
     await service.from('message_threads').update({ status: 'waiting_client', needs_owner: false, last_message_at: sentAt, updated_at: sentAt }).eq('workspace_id', workspaceId).eq('id', thread.id);
     return { message: sentMessage, sent: true, duplicatePrevented: false };
+  }
+
+  private resolveAdapter(provider: string): MessagingProviderAdapter | null {
+    if (provider === 'manual') return this.manualAdapter;
+    if ((provider === 'instagram' || provider === 'facebook') && metaTransportEnabled()) return new MetaMessagingAdapter();
+    return null;
+  }
+
+  /**
+   * Inbound Meta webhook path. No AngelOS bearer token exists here -- Meta calls this directly
+   * -- so this is the service-role equivalent of ingestDemoMessage(), invoked only after the
+   * controller has verified the X-Hub-Signature-256 header. This only ever creates an inbound
+   * thread/message for owner review; it never sends anything and is not gated by
+   * metaTransportEnabled(), since receiving a message is safe regardless of send activation.
+   */
+  async ingestMetaMessage(workspaceId: string, channelId: string, externalUserId: string, externalMessageId: string, body: string) {
+    const trimmed = body.trim();
+    if (!trimmed) return { deduplicated: false, skipped: true };
+    const service = createServiceSupabaseClient();
+
+    const prior = await service.from('client_messages').select('id').eq('workspace_id', workspaceId).eq('external_message_id', externalMessageId).maybeSingle();
+    if (prior.error) throw new InternalServerErrorException(prior.error.message);
+    if (prior.data) return { deduplicated: true };
+
+    const { data: identity, error: identityError } = await service
+      .from('client_channel_identities')
+      .select('client_id')
+      .eq('workspace_id', workspaceId)
+      .eq('channel_id', channelId)
+      .eq('external_user_id', externalUserId)
+      .maybeSingle();
+    if (identityError) throw new InternalServerErrorException(identityError.message);
+
+    let clientId = identity?.client_id ?? null;
+    if (!clientId) {
+      const { data: channel, error: channelError } = await service.from('messaging_channels').select('provider,display_name').eq('id', channelId).single();
+      if (channelError || !channel) throw new InternalServerErrorException('Messaging channel not found for inbound webhook');
+      const { data: lead, error: leadError } = await service.from('clients').insert({
+        workspace_id: workspaceId, display_name: `${channel.display_name} lead`, language: 'en', status: 'lead',
+        source: channel.provider, do_not_auto_message: false
+      }).select('id').single();
+      if (leadError || !lead) throw new InternalServerErrorException(leadError?.message ?? 'Could not create lead');
+      clientId = lead.id;
+      const { error: identityUpsertError } = await service.from('client_channel_identities').upsert({
+        workspace_id: workspaceId, client_id: clientId, channel_id: channelId, external_user_id: externalUserId, match_confidence: 'verified'
+      }, { onConflict: 'workspace_id,channel_id,external_user_id' });
+      if (identityUpsertError) throw new InternalServerErrorException(identityUpsertError.message);
+    }
+
+    const intent = classifyIntent(trimmed);
+    const sensitive = isSensitive(trimmed, intent);
+    const phishing = looksLikePhishing(trimmed);
+    const priority = sensitive || phishing ? 'urgent' : 'today';
+    const status = phishing ? 'spam_scam' : sensitive ? 'needs_owner' : intent === 'booking' || intent === 'reschedule' ? 'booking_in_progress' : 'needs_reply';
+
+    // One thread per sender, keyed by their PSID/IGSID -- Instagram/Messenger have no separate
+    // thread concept, unlike LINE.
+    const { data: existingThread, error: threadLookupError } = await service.from('message_threads').select('id').eq('workspace_id', workspaceId).eq('channel_id', channelId).eq('external_thread_id', externalUserId).maybeSingle();
+    if (threadLookupError) throw new InternalServerErrorException(threadLookupError.message);
+    let threadId = existingThread?.id as string | undefined;
+    if (!threadId) {
+      const created = await service.from('message_threads').insert({
+        workspace_id: workspaceId, channel_id: channelId, client_id: clientId,
+        external_thread_id: externalUserId, contact_external_user_id: externalUserId,
+        intent, priority, status, needs_owner: sensitive || phishing, last_message_at: new Date().toISOString()
+      }).select('id').single();
+      if (created.error || !created.data) throw new InternalServerErrorException(created.error?.message ?? 'Could not create message thread');
+      threadId = created.data.id;
+    } else {
+      const { error } = await service.from('message_threads').update({
+        client_id: clientId, intent, priority, status, needs_owner: sensitive || phishing,
+        last_message_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      }).eq('workspace_id', workspaceId).eq('id', threadId);
+      if (error) throw new InternalServerErrorException(error.message);
+    }
+
+    const { data: message, error: messageError } = await service.from('client_messages').insert({
+      workspace_id: workspaceId, thread_id: threadId, client_id: clientId,
+      direction: 'inbound', sender_type: 'client', external_message_id: externalMessageId,
+      body: trimmed, status: 'received', sensitive, metadata: { source: 'meta-webhook' }
+    }).select('id').single();
+    if (messageError) {
+      if ((messageError as any).code === '23505') return { deduplicated: true };
+      throw new InternalServerErrorException(messageError.message);
+    }
+    return { deduplicated: false, threadId, messageId: message.id };
   }
 }
 
