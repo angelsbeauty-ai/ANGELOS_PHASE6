@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, Optional } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { AiProviderService } from '../ai/ai-provider.service';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
@@ -98,6 +98,78 @@ export class MessagingService {
     });
     if (error) throw new InternalServerErrorException(error.message);
     if (!data?.ok) throw new BadRequestException(data?.reason ?? 'Client Control review was not accepted');
+    return data;
+  }
+
+  /**
+   * The writer for the Client Control review queue.
+   *
+   * save_client_control_draft() existed (and the review screens read from it), but nothing in
+   * the repo ever called it, so the queue was permanently empty. This is that missing call:
+   * analyse the latest inbound message, draft a reply, and stage both for owner review.
+   *
+   * Nothing here can send. The RPC stores the draft as pending_approval with send_released
+   * false, a database CHECK constraint enforces the no-send rule for this stage, and
+   * needs_angel/send_released are forced below rather than taken from the model, so an AI
+   * response cannot opt itself out of review. Keyed to the inbound message id, so retrying
+   * returns the existing draft instead of creating a second approvable reply.
+   */
+  async stageClientControlDraft(user: AuthUser, workspaceId: string, threadId: string) {
+    await this.getWorkspaceMembership(user, workspaceId);
+    const detail = await this.getThread(user, workspaceId, threadId);
+    const thread = detail.thread as any;
+    if (thread.channel?.provider !== 'line') {
+      throw new BadRequestException('Client Control staging currently covers LINE threads only.');
+    }
+    const latestInbound = [...detail.messages].reverse().find((item: any) => item.direction === 'inbound');
+    if (!latestInbound) throw new BadRequestException('No inbound message to analyse');
+
+    const client = thread.client;
+    const response = await this.aiProvider.generate({
+      instructions: [
+        'You are the AngelOS assistant preparing a LINE reply for the business owner to review.',
+        'Return ONLY a JSON object, no prose and no code fences, with exactly these keys:',
+        '"reply" (the suggested reply, in the client\'s language),',
+        '"english_meaning" (what your reply says, in English),',
+        '"client_message_english_meaning" (what the CLIENT said, in English),',
+        '"detected_language" (one of "ja","en","mixed","unknown"),',
+        '"translation_method" (how you translated, e.g. "model"),',
+        '"intent","urgency","sentiment","treatment_or_topic" (short strings),',
+        '"requested_date_time" (string or null),',
+        '"risk_flags" (array of strings, may be empty),',
+        '"sensitive" (boolean),',
+        '"recommended_next_action" (short string).',
+        'Never invent price, availability, policy, or medical facts. If the language is unclear use "unknown".',
+        client ? `Known client: ${client.display_name}; language=${client.language}.` : 'Sender is not linked to a verified client record.'
+      ].join(' '),
+      input: latestInbound.body
+    });
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response.text.trim().replace(/^```(?:json)?|```$/g, '').trim());
+    } catch {
+      throw new BadGatewayException('The assistant did not return a usable analysis for this message.');
+    }
+
+    const analysis = {
+      ...parsed,
+      // Forced, not trusted from the model: this stage is review-gated and no-send by design.
+      needs_angel: true,
+      send_released: false
+    };
+
+    const service = createServiceSupabaseClient();
+    const { data, error } = await service.rpc('save_client_control_draft', {
+      p_thread_id: threadId,
+      p_source_message_id: latestInbound.id,
+      p_body: String(parsed.reply ?? '').trim(),
+      p_english_meaning: String(parsed.english_meaning ?? '').trim(),
+      p_analysis: analysis,
+      p_draft_key: latestInbound.id
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data?.ok) throw new BadRequestException(data?.reason ?? 'Client Control draft was not accepted');
     return data;
   }
 

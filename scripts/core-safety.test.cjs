@@ -313,3 +313,43 @@ test('meta setup status is owner-only and leaks no secret values', async () => {
   database({ workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'member' }] });
   await assert.rejects(new MessagingService(ai).getMetaSetupStatus(user, workspace), /Only the workspace owner/);
 });
+test('client control staging forces owner review and cannot release a send', async () => {
+  const validAnalysis = {
+    reply: 'こんにちは', english_meaning: 'Hello', client_message_english_meaning: 'Do you have availability?',
+    detected_language: 'ja', translation_method: 'model', intent: 'booking', urgency: 'today',
+    sentiment: 'neutral', treatment_or_topic: 'lashes', requested_date_time: null, risk_flags: [],
+    sensitive: false, recommended_next_action: 'offer to check the calendar',
+    // The model is not trusted with these two; the service must overwrite them.
+    needs_angel: false, send_released: true
+  };
+  const memory = database({
+    workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'owner' }],
+    message_threads: [{ id: 'thread', workspace_id: workspace, channel: { provider: 'line' }, client: null }],
+    client_messages: [{ id: 'inbound', workspace_id: workspace, thread_id: 'thread', direction: 'inbound', body: '空いてますか' }]
+  });
+  let rpcArgs = null;
+  memory.rpc = async (name, args) => { rpcArgs = { name, args }; return { data: { ok: true, draft_message_id: 'draft' }, error: null }; };
+  const service = new MessagingService({ generate: async () => ({ text: JSON.stringify(validAnalysis), provider: 'mock', model: 'test' }) });
+  await service.stageClientControlDraft(user, workspace, 'thread');
+  assert.equal(rpcArgs.name, 'save_client_control_draft');
+  assert.equal(rpcArgs.args.p_analysis.needs_angel, true, 'needs_angel must be forced true');
+  assert.equal(rpcArgs.args.p_analysis.send_released, false, 'send_released must be forced false');
+  assert.equal(rpcArgs.args.p_draft_key, 'inbound', 'draft key must be the inbound message id so retries dedupe');
+});
+test('client control staging refuses a non-LINE thread', async () => {
+  database({
+    workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'owner' }],
+    message_threads: [{ id: 'thread', workspace_id: workspace, channel: { provider: 'instagram' } }],
+    client_messages: [{ id: 'inbound', workspace_id: workspace, thread_id: 'thread', direction: 'inbound', body: 'hi' }]
+  });
+  await assert.rejects(new MessagingService(ai).stageClientControlDraft(user, workspace, 'thread'), /LINE threads only/);
+});
+test('client control staging rejects an unparseable assistant response', async () => {
+  database({
+    workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'owner' }],
+    message_threads: [{ id: 'thread', workspace_id: workspace, channel: { provider: 'line' } }],
+    client_messages: [{ id: 'inbound', workspace_id: workspace, thread_id: 'thread', direction: 'inbound', body: 'hi' }]
+  });
+  const service = new MessagingService({ generate: async () => ({ text: 'I cannot help with that.', provider: 'mock', model: 'test' }) });
+  await assert.rejects(service.stageClientControlDraft(user, workspace, 'thread'), /did not return a usable analysis/);
+});
