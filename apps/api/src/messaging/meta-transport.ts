@@ -99,7 +99,7 @@ async function loadMetaConnection(workspaceId: string, provider: 'instagram' | '
     .maybeSingle();
   if (error) throw new Error(`Could not load ${provider} connection: ${error.message}`);
   if (!data) throw new Error(`No ${provider} account is connected for this workspace yet.`);
-  if (data.status !== 'active') throw new Error(`${provider} connection is ${data.status}, not active.`);
+  if (data.status !== 'connected') throw new Error(`${provider} connection is ${data.status}, not connected.`);
   if (data.access_expires_at && new Date(data.access_expires_at).getTime() <= Date.now()) {
     throw new Error(`${provider} access token expired at ${data.access_expires_at}. Reconnect the account.`);
   }
