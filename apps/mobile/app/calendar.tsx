@@ -14,7 +14,7 @@ import {
   SupportText,
   ui
 } from '../src/components/ui';
-import { confirmAppointment, getCalendar, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
+import { cancelAppointment, completeAppointment, confirmAppointment, getCalendar, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
 import { getActiveWorkspace } from '../src/lib/workspace';
 
 export default function CalendarScreen() {
@@ -22,24 +22,36 @@ export default function CalendarScreen() {
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [busy, setBusy] = useState(true);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => { void load(); }, []);
 
-  // An appointment booked in AngelOS is created as confirmation_pending. Until it is confirmed it
-  // never queues its reminder automations, so the owner needs to be able to confirm it here.
-  async function confirm(appointmentId: string) {
-    if (confirmingId) return;
-    setConfirmingId(appointmentId);
+  // The API exposes confirm/cancel/complete, but only confirm had a caller, so a booking made in
+  // AngelOS could never be finished or called off from the app. An appointment is created as
+  // confirmation_pending and does not queue its reminder automations until it is confirmed.
+  async function runAction(appointmentId: string, action: 'confirm' | 'cancel' | 'complete') {
+    if (pendingId) return;
+    setPendingId(appointmentId);
     try {
       const workspace = await getActiveWorkspace();
-      await confirmAppointment(workspace.id, appointmentId);
+      if (action === 'confirm') await confirmAppointment(workspace.id, appointmentId);
+      else if (action === 'cancel') await cancelAppointment(workspace.id, appointmentId);
+      else await completeAppointment(workspace.id, appointmentId);
       await load();
     } catch (error) {
-      Alert.alert('Could not confirm booking', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert(`Could not ${action} booking`, error instanceof Error ? error.message : 'Unknown error');
     } finally {
-      setConfirmingId(null);
+      setPendingId(null);
     }
+  }
+
+  // Cancelling also cancels the booking's queued reminders and cannot be undone from here, so it
+  // asks first rather than acting on a single tap.
+  function confirmCancel(appointmentId: string, title: string) {
+    Alert.alert('Cancel this booking?', `${title}\n\nThis also cancels its reminders and cannot be undone here.`, [
+      { text: 'Keep booking', style: 'cancel' },
+      { text: 'Cancel booking', style: 'destructive', onPress: () => void runAction(appointmentId, 'cancel') }
+    ]);
   }
 
   async function load() {
@@ -113,16 +125,24 @@ export default function CalendarScreen() {
           </View>
           <Text style={styles.itemTitle}>{item.title}</Text>
           <SupportText>{item.detail.replaceAll('_', ' ')}</SupportText>
-          {item.appointmentId && (item.status === 'confirmation_pending' || item.status === 'request') ? (
-            <Pressable
-              onPress={() => void confirm(item.appointmentId as string)}
-              disabled={confirmingId !== null}
-              style={confirmingId !== null ? styles.mutedAction : undefined}
-            >
-              <PrimaryActionLabel>
-                {confirmingId === item.appointmentId ? 'Confirming...' : 'Confirm Booking'}
-              </PrimaryActionLabel>
-            </Pressable>
+          {item.appointmentId ? (
+            <View style={styles.actionRow}>
+              {item.status === 'confirmation_pending' || item.status === 'request' ? (
+                <Pressable onPress={() => void runAction(item.appointmentId as string, 'confirm')} disabled={pendingId !== null} style={pendingId !== null ? styles.mutedAction : undefined}>
+                  <PrimaryActionLabel>{pendingId === item.appointmentId ? 'Working...' : 'Confirm Booking'}</PrimaryActionLabel>
+                </Pressable>
+              ) : null}
+              {['confirmed', 'arrival_info_sent', 'checked_in'].includes(item.status ?? '') ? (
+                <Pressable onPress={() => void runAction(item.appointmentId as string, 'complete')} disabled={pendingId !== null} style={pendingId !== null ? styles.mutedAction : undefined}>
+                  <PrimaryActionLabel>{pendingId === item.appointmentId ? 'Working...' : 'Mark Completed'}</PrimaryActionLabel>
+                </Pressable>
+              ) : null}
+              {['confirmation_pending', 'request', 'confirmed', 'arrival_info_sent', 'checked_in'].includes(item.status ?? '') ? (
+                <Pressable onPress={() => confirmCancel(item.appointmentId as string, item.title)} disabled={pendingId !== null} style={pendingId !== null ? styles.mutedAction : undefined}>
+                  <SecondaryActionLabel>Cancel Booking</SecondaryActionLabel>
+                </Pressable>
+              ) : null}
+            </View>
           ) : null}
         </Card>
       ))}
@@ -145,6 +165,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: ui.spacing.sm },
   headerCopy: { flex: 1, gap: ui.spacing.xs },
   mutedAction: { opacity: 0.55 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: ui.spacing.md, flexWrap: 'wrap' },
   newBookingButton: { width: 132 },
   controlRow: { flexDirection: 'row', alignItems: 'center', gap: ui.spacing.sm },
   serviceLink: {

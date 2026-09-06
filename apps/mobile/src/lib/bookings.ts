@@ -54,3 +54,11 @@ export function createAppointment(workspaceId: string, input: Record<string, unk
 export function confirmAppointment(workspaceId: string, appointmentId: string) {
   return apiFetch(`/workspaces/${workspaceId}/appointments/${appointmentId}/confirm`, { method: 'POST' });
 }
+
+export function cancelAppointment(workspaceId: string, appointmentId: string) {
+  return apiFetch(`/workspaces/${workspaceId}/appointments/${appointmentId}/cancel`, { method: 'POST' });
+}
+
+export function completeAppointment(workspaceId: string, appointmentId: string) {
+  return apiFetch(`/workspaces/${workspaceId}/appointments/${appointmentId}/complete`, { method: 'POST' });
+}
