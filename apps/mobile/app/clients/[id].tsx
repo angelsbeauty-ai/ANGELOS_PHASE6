@@ -13,9 +13,11 @@ import {
   SupportText,
   ui
 } from '../../src/components/ui';
-import { addClientNote, addTreatment, getClient, type ClientDetail } from '../../src/lib/clients';
+import { addClientNote, addTreatment, getClient, recordConsent, updateClient, type ClientDetail, type ConsentType } from '../../src/lib/clients';
 import { recordFinanceEntry } from '../../src/lib/finance';
 import { getActiveWorkspace } from '../../src/lib/workspace';
+
+const CONSENT_TYPES: ConsentType[] = ['treatment', 'photo_video', 'marketing', 'model_student', 'policy_acknowledgement'];
 
 function newPaymentKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -31,6 +33,8 @@ export default function ClientDetailScreen() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [busy, setBusy] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [savingFlag, setSavingFlag] = useState(false);
+  const [savingConsent, setSavingConsent] = useState<ConsentType | null>(null);
   // One key per payment the owner is entering, NOT per submit. A retry or a double tap has to
   // send the same key for the server's unique index on (workspace_id, idempotency_key) to collapse
   // it into one entry; it is rotated only after a payment is actually recorded, so a genuine
@@ -60,6 +64,32 @@ export default function ClientDetailScreen() {
     await load();
   }
 
+
+  async function toggleAutoMessage() {
+    if (!workspaceId || !id || !detail || savingFlag) return;
+    setSavingFlag(true);
+    try {
+      await updateClient(workspaceId, id, { doNotAutoMessage: !detail.client.do_not_auto_message });
+      await load();
+    } catch (error) {
+      Alert.alert('Could not update client', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setSavingFlag(false);
+    }
+  }
+
+  async function saveConsent(consentType: ConsentType, status: 'granted' | 'withdrawn') {
+    if (!workspaceId || !id || savingConsent) return;
+    setSavingConsent(consentType);
+    try {
+      await recordConsent(workspaceId, id, consentType, status);
+      await load();
+    } catch (error) {
+      Alert.alert('Could not record consent', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setSavingConsent(null);
+    }
+  }
 
   async function savePayment() {
     if (!workspaceId || !id || savingPayment) return;
@@ -121,6 +151,12 @@ export default function ClientDetailScreen() {
         <BodyText>{client.phone ?? 'No phone saved'}</BodyText>
         <BodyText>{client.email ?? 'No email saved'}</BodyText>
         {client.do_not_auto_message ? <SupportText tone="warning">Do Not Auto-Message is enabled.</SupportText> : null}
+        {/* The API enforces this flag on every AI send, but nothing in the app could set it. */}
+        <Pressable onPress={() => void toggleAutoMessage()} disabled={savingFlag} style={savingFlag ? styles.muted : undefined}>
+          <SecondaryActionLabel>
+            {savingFlag ? 'Saving...' : client.do_not_auto_message ? 'Allow Auto-Messages' : 'Set Do Not Auto-Message'}
+          </SecondaryActionLabel>
+        </Pressable>
       </Card>
 
       <Card>
@@ -158,6 +194,23 @@ export default function ClientDetailScreen() {
         <SectionTitle>Consent & Marketing</SectionTitle>
         {detail.consents.length === 0 ? <SupportText>No consent records yet.</SupportText> : detail.consents.slice(0, 5).map((consent) => (
           <BodyText key={consent.id}>{consent.consent_type.replaceAll('_', ' ')}: {consent.status}</BodyText>
+        ))}
+        {/* Consent records could be read but never created from the app. Each type records
+            granted or withdrawn; the API appends a record rather than overwriting, so the
+            history stays auditable. */}
+        <SupportText>Record consent</SupportText>
+        {CONSENT_TYPES.map((type) => (
+          <View key={type} style={styles.consentRow}>
+            <BodyText>{type.replaceAll('_', ' ')}</BodyText>
+            <View style={styles.consentActions}>
+              <Pressable onPress={() => void saveConsent(type, 'granted')} disabled={savingConsent !== null} style={savingConsent !== null ? styles.muted : undefined}>
+                <SecondaryActionLabel>{savingConsent === type ? '...' : 'Granted'}</SecondaryActionLabel>
+              </Pressable>
+              <Pressable onPress={() => void saveConsent(type, 'withdrawn')} disabled={savingConsent !== null} style={savingConsent !== null ? styles.muted : undefined}>
+                <SecondaryActionLabel>Withdrawn</SecondaryActionLabel>
+              </Pressable>
+            </View>
+          </View>
         ))}
       </Card>
 
@@ -206,5 +259,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlignVertical: 'top'
   },
-  multiline: { minHeight: 78 }
+  multiline: { minHeight: 78 },
+  muted: { opacity: 0.55 },
+  consentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: ui.spacing.sm, paddingVertical: ui.spacing.xs },
+  consentActions: { flexDirection: 'row', alignItems: 'center', gap: ui.spacing.md }
 });

@@ -40,6 +40,22 @@ export function createClient(workspaceId: string, input: Record<string, unknown>
   });
 }
 
+export function updateClient(workspaceId: string, clientId: string, input: Record<string, unknown>) {
+  return apiFetch<ClientSummary>(`/workspaces/${workspaceId}/clients/${clientId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input)
+  });
+}
+
+export type ConsentType = 'treatment' | 'photo_video' | 'marketing' | 'model_student' | 'policy_acknowledgement';
+
+export function recordConsent(workspaceId: string, clientId: string, consentType: ConsentType, status: 'granted' | 'denied' | 'withdrawn') {
+  return apiFetch(`/workspaces/${workspaceId}/clients/${clientId}/consents`, {
+    method: 'POST',
+    body: JSON.stringify({ consentType, status })
+  });
+}
+
 export function addClientNote(workspaceId: string, clientId: string, content: string) {
   return apiFetch(`/workspaces/${workspaceId}/clients/${clientId}/notes`, {
     method: 'POST',
