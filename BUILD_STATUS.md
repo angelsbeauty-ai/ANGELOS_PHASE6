@@ -1,54 +1,71 @@
 # AngelOS Build Status
 
-Generated: 2026-09-06. Branch: `integration/angelos-core`, commit `3f46e5e`, pushed.
+Generated: 2026-09-06. Branch: `integration/angelos-core`, commit `448edd0`, pushed.
 
-## Where everything lives
+## Railway: consolidation state
 
-- **Canonical branch right now: `integration/angelos-core`** (not `main`, not `feat/approvals-core`, not `chatgpt/angelos-core`). It merges the approvals/bookings/safety hardening work with Codex's Flow 1 messaging work, with conflicts resolved and verified.
-- `feat/approvals-core` and `chatgpt/angelos-core` still exist, untouched, in case anything needs to be cross-checked.
-- `.worktrees/angelos-core` (checked out on `chatgpt/angelos-core`) is now 3 commits behind `integration/angelos-core`. If you or Codex keep working there, that work will diverge again.
-- No PR into `main` has been opened. Nothing has been merged to `main`.
+**Canonical project: `abundant-forgiveness` → service `@angelos/api` → `angelosapi-production.up.railway.app`.**
+
+Evidence-based finding: *neither* Railway project was production. Both run `NODE_ENV=staging` against the **same** Supabase project (`hhzegavoyuicclsmrkwf`). The "production" in the canonical domain is Railway's auto-generated naming, nothing more.
+
+Migrated from `blissful-courtesy` → canonical (values piped stdin-to-stdin, never printed or written to disk):
+
+| Var | Why |
+|---|---|
+| `FOUNDER_USER_IDS` | closed a real gap — `beta.service.ts`, `beta-access.guard.ts`, `founder.guard.ts` all read it; canonical had none |
+| `FOUNDER_EMAIL` | `bootstrap-founder.mjs`, `verify-staging-founder.mjs` |
+| `STAGING_TEST_EMAIL_A/B`, `STAGING_TEST_PASSWORD_A/B` | `staging-smoke.mjs` |
+| `STAGING_SUPABASE_URL`, `STAGING_SUPABASE_PUBLISHABLE_KEY` | `staging-smoke.mjs` |
+| `STAGING_API_URL` | set to the canonical domain (not copied from blissful-courtesy's) |
+
+Deliberately **not** migrated: `SUPABASE_ANON_KEY` (canonical has the modern `SUPABASE_PUBLISHABLE_KEY`), and `USE_LOCAL_OAUTH` / `USE_STAGING_OAUTH` / `AI_AGENT` / `API_TIMEOUT_MS` — grep shows nothing in this repo consumes them.
+
+**Parity proven:** canonical passes `npm run test:staging` 6/6 (the suite `blissful-courtesy` was built to run), 15/15 required vars present, `health/ready` HTTP 200.
+
+### ⛔ Waiting on your approval — retirement of `blissful-courtesy`
+
+Everything required has been migrated and verified. The retirement itself is irreversible, so it stops here as instructed. **Nothing has been deleted, repointed, or redeployed.**
+
+### Still open: staging vs production is not real yet
+
+Both Railway projects point at one Supabase database, so splitting Railway environments alone is cosmetic — a staging test can write real client data today. Real separation needs a **second Supabase project** for production. That costs money and is production-impacting, so it is not started.
 
 ## Area status
 
 | Area | Status |
 |---|---|
 | Approvals | BUILT / CONNECTED / INTERNALLY PROVEN |
-| Bookings | BUILT / CONNECTED / INTERNALLY PROVEN |
-| Messaging core (channels, threads, drafts, translate) | BUILT / CONNECTED / INTERNALLY PROVEN |
-| LINE Client Control staging | BUILT / CONNECTED — **NEEDS FINAL TEST** (see gap below) |
-| Flow 1 (LINE approval → guarded send) | BUILT / CONNECTED / INTERNALLY PROVEN in the **disposable** Supabase project only. Real project: code present, deliberately dormant, NOT applied to schema. |
-| Meta transport (Instagram/Facebook direct send) | BUILT / CONNECTED — **NEEDS FINAL TEST**, dormant by default |
-| Meta inbound webhook | BUILT — **NEEDS FINAL TEST** (needs a real Meta app registered against it) |
-| Safety guards (emergency stop, subscription, feature flags, beta) | BUILT / CONNECTED / INTERNALLY PROVEN |
-| Clients/CRM, Analytics, System Health, Owner Actions, Costs/Usage | Audited earlier this session; several confirmed findings **not yet fixed** (see "Known gaps" below) |
-| Content Control | Not started. Per your instruction, deliberately left alone. |
+| Bookings (incl. owner journey: confirm/cancel/complete) | BUILT / CONNECTED / INTERNALLY PROVEN |
+| Messaging core | BUILT / CONNECTED / INTERNALLY PROVEN |
+| LINE Client Control | BUILT / CONNECTED / INTERNALLY PROVEN — writer connected, queue no longer dead |
+| Flow 1 (LINE approval → guarded send) | INTERNALLY PROVEN in the disposable project only; dormant + unapplied on real |
+| Meta transport (Instagram/Facebook send) | BUILT / INTERNALLY PROVEN — **dormant**, NEEDS FINAL TEST |
+| Meta inbound webhook | BUILT — NEEDS FINAL TEST (needs your Meta app registered) |
+| Safety guards | BUILT / CONNECTED / INTERNALLY PROVEN |
+| Owner Actions / Costs | Beta-revocation downgrade bug fixed + audited |
+| System Health | Mock-AI misreport fixed |
+| Clients/CRM | Payment double-charge fixed; `PATCH` client + consents routes still have no mobile caller |
+| Content Control | Not started (deliberately) |
 
-"Internally proven" = passed automated tests I ran (unit tests, an embedded-Postgres end-to-end suite, or a synthetic smoke test) — not tapped on your phone. Everything marked "needs final test" needs that from you.
+## This session's commits
 
-## What actually works right now, if you do nothing else
+- `1d798c0` Meta setup diagnostics + credential-lookup hardening
+- `167fc51` Client Control draft writer (closed the empty-queue blocker)
+- `117ea74` Beta revocation no longer downgrades paying workspaces; mock AI no longer "healthy"
+- `448edd0` Booking owner journey (cancel/complete on calendar)
 
-Nothing new sends to a real client. Two independent kill switches both have to be off, and both are off everywhere except a disposable test project:
+Test baseline: **core-safety 40/40**, staging smoke 6/6, `verify:static` (5 checks), API build, mobile typecheck — all green.
 
-1. **Flow 1** (LINE approval-gated send): requires `FLOW1_STAGING_EXECUTION_ENABLED=true` + `FLOW1_STAGING_WORKSPACE_ID=<one workspace>`. Not set on Railway or locally.
-2. **Meta transport** (direct Instagram/Facebook send): requires `META_TRANSPORT_ENABLED=true`. Not set anywhere.
+## Nothing can message a real client
 
-## Known gaps (found by audit, not yet fixed this session)
+Two independent gates, both off everywhere except the disposable test project:
+1. **Flow 1**: needs `FLOW1_STAGING_EXECUTION_ENABLED=true` + `FLOW1_STAGING_WORKSPACE_ID`.
+2. **Meta**: needs `META_TRANSPORT_ENABLED=true`.
 
-- **LINE Client Control**: the review queue and screens exist, but nothing in the repo calls `save_client_control_draft` — no draft is ever staged, so the queue stays empty. Someone (n8n, most likely) needs to call it.
-- Clients/CRM: payment idempotency key fixed; a `PATCH` client route and the consents route have no mobile caller yet, including the only path that sets `do_not_auto_message`.
-- Owner Actions: `revokeTester` can force-downgrade a paying workspace's subscription with no status guard and no audit row. Not fixed yet.
-- System Health: the AI health check can report "healthy" while `AI_PROVIDER_MODE` is actually `mock`.
-- Analytics/System Health: a couple of low-severity mobile-unreachable routes and a swallowed error on one audit write.
+No webhook is registered with Meta. `N8N_WEBHOOK_APPROVAL_EXECUTE` is unset, so approving an approval dispatches nothing.
 
-None of these are new — they were found during the earlier full-core audit and intentionally deferred so this session could focus on Meta.
+## Continuation point
 
-## What I did NOT do (stopped here on purpose)
-
-- Did not fix the Clients/CRM, Owner Actions, System Health gaps above.
-- Did not build a real OAuth connect flow for Instagram/Facebook (see SELF_TEST.md — for now you'll paste tokens by hand).
-- Did not register anything with Meta's dashboard — that requires your login.
-- Did not touch `main`, did not open a PR.
-- Did not re-run the slow embedded-Postgres Flow 1 suite after the Meta commit (only after the merge-fix commit) — nothing in the Meta commit touches Flow 1 code, so this is low-risk, but it's unverified by me specifically for that commit.
-
-Continue with `git checkout integration/angelos-core` from here — everything above is committed and pushed.
+1. **Blocked on you:** approve `blissful-courtesy` retirement; do the Meta App setup in SELF_TEST.md.
+2. Then: Instagram inbound E2E → Facebook reuse (same adapter, `provider='facebook'`) → production activation approval.
+3. Unblocked backlog: Clients/CRM unreachable routes (`PATCH` client, consents — the only path that sets `do_not_auto_message`), Content Control.

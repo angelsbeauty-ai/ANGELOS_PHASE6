@@ -6,7 +6,18 @@ Your workspace ID (the only workspace in this system today): `2f420624-2422-4fc3
 
 ---
 
-## 0. Get this branch live
+## 0a. Approve the Railway retirement (blocking, 30 seconds)
+
+Everything `blissful-courtesy` had has been migrated to the canonical service and verified
+(staging smoke 6/6, 15/15 vars, health 200). Retiring it is irreversible, so it needs your word.
+
+- **WHERE**: reply here.
+- **DO**: say "retire blissful-courtesy" (or "keep it").
+- **EXPECTED**: I take a final config snapshot, delete the service/project, re-verify canonical health.
+- **STOP IF**: you are unsure whether anything else (n8n, a bookmark, an external webhook) still points at
+  `blissful-courtesy-production-*.up.railway.app`. Check that first — those two URLs die with it.
+
+## 0b. Get this branch live
 
 Right now Railway is (probably) still deploying from `main`. This session's work is on `integration/angelos-core`. Before the webhook can respond to anything real:
 
