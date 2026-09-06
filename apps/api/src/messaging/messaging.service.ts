@@ -7,6 +7,7 @@ import type { IngestMessageDto } from './dto/ingest-message.dto';
 import type { CreateReplyDto } from './dto/create-reply.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
 import type { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
+import type { ConnectMetaChannelDto } from './dto/connect-meta-channel.dto';
 import { ManualDemoMessagingAdapter, type MessagingProviderAdapter } from './provider-adapter';
 import { flow1StagingEnabled, StagingMessageExecutionService } from './staging-message-execution.service';
 import { MetaMessagingAdapter, metaCredentialStatus, metaTransportEnabled } from './meta-transport';
@@ -192,6 +193,97 @@ export class MessagingService {
     }).select('*').single();
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  /**
+   * Connect an Instagram or Facebook account without hand-editing Supabase tables.
+   *
+   * Writes the two rows the transport needs: the channel (messaging_channels, holding the Graph
+   * node id) and the credential (oauth_connections, service-role only). Owner-only. The token is
+   * written once and never read back -- the response reports presence and expiry, nothing more.
+   * Connecting a channel does not enable sending; META_TRANSPORT_ENABLED still gates that.
+   */
+  async connectMetaChannel(user: AuthUser, workspaceId: string, dto: ConnectMetaChannelDto) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can connect a messaging account.');
+    if (new Date(dto.accessExpiresAt).getTime() <= Date.now()) {
+      throw new BadRequestException('That access token is already expired. Generate a fresh long-lived token first.');
+    }
+
+    const service = createServiceSupabaseClient();
+    const externalAccountId = dto.externalAccountId.trim();
+
+    // Same Graph node must not be attached to two workspaces: the webhook resolves a workspace
+    // from entry.id, so a duplicate would make inbound routing ambiguous.
+    const { data: clash, error: clashError } = await service
+      .from('messaging_channels')
+      .select('id,workspace_id')
+      .eq('provider', dto.provider)
+      .eq('external_account_id', externalAccountId)
+      .maybeSingle();
+    if (clashError) throw new InternalServerErrorException(clashError.message);
+    if (clash && clash.workspace_id !== workspaceId) {
+      throw new ConflictException('That account is already connected to a different workspace.');
+    }
+
+    const now = new Date().toISOString();
+    const channelPayload = {
+      workspace_id: workspaceId,
+      provider: dto.provider,
+      display_name: dto.displayName.trim(),
+      external_account_id: externalAccountId,
+      status: 'connected',
+      capabilities: { inbound: true, outbound: true },
+      updated_at: now
+    };
+    const channel = clash
+      ? await service.from('messaging_channels').update(channelPayload).eq('id', clash.id).select('id,provider,display_name,external_account_id,status').single()
+      : await service.from('messaging_channels').insert({ ...channelPayload, created_by: user.id }).select('id,provider,display_name,external_account_id,status').single();
+    if (channel.error) throw new InternalServerErrorException(channel.error.message);
+
+    // Reconnecting replaces the stored token rather than accumulating rows per provider.
+    const { data: existing, error: existingError } = await service
+      .from('oauth_connections')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', dto.provider)
+      .maybeSingle();
+    if (existingError) throw new InternalServerErrorException(existingError.message);
+
+    const credential = {
+      workspace_id: workspaceId,
+      provider: dto.provider,
+      access_token: dto.accessToken,
+      access_expires_at: dto.accessExpiresAt,
+      scopes: dto.scopes?.trim() || null,
+      open_id: externalAccountId,
+      status: 'active',
+      last_error: null,
+      updated_at: now
+    };
+    const saved = existing
+      ? await service.from('oauth_connections').update(credential).eq('id', existing.id)
+      : await service.from('oauth_connections').insert(credential);
+    if (saved.error) throw new InternalServerErrorException(saved.error.message);
+
+    return {
+      channel: channel.data,
+      credential: { provider: dto.provider, status: 'active', expiresAt: dto.accessExpiresAt, tokenStored: true },
+      sendingEnabled: metaTransportEnabled(workspaceId)
+    };
+  }
+
+  /** Owner-only. Disconnects without deleting history: the channel stops sending and the stored token is cleared. */
+  async disconnectMetaChannel(user: AuthUser, workspaceId: string, provider: 'instagram' | 'facebook') {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can disconnect a messaging account.');
+    const service = createServiceSupabaseClient();
+    const now = new Date().toISOString();
+    const channel = await service.from('messaging_channels').update({ status: 'disconnected', updated_at: now }).eq('workspace_id', workspaceId).eq('provider', provider).select('id');
+    if (channel.error) throw new InternalServerErrorException(channel.error.message);
+    const credential = await service.from('oauth_connections').update({ status: 'revoked', access_token: '', updated_at: now }).eq('workspace_id', workspaceId).eq('provider', provider).select('id');
+    if (credential.error) throw new InternalServerErrorException(credential.error.message);
+    return { provider, channelsDisconnected: channel.data?.length ?? 0, credentialsRevoked: credential.data?.length ?? 0 };
   }
 
   async listThreads(user: AuthUser, workspaceId: string) {

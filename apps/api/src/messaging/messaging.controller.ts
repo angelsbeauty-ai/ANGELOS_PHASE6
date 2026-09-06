@@ -10,6 +10,7 @@ import { UpdateThreadDto } from './dto/update-thread.dto';
 import { InternalNoteDto } from './dto/internal-note.dto';
 import { TranslateMessageDto } from './dto/translate-message.dto';
 import { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
+import { ConnectMetaChannelDto } from './dto/connect-meta-channel.dto';
 
 @Controller('workspaces/:workspaceId/messaging')
 @UseGuards(SupabaseAuthGuard)
@@ -21,6 +22,8 @@ export class MessagingController {
   @Get('client-control/review-queue') getClientControlReviewQueue(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.getClientControlReviewQueue(user, workspaceId); }
   @Get('client-control/drafts/:messageId') getClientControlReviewDetail(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('messageId') messageId: string) { return this.messaging.getClientControlReviewDetail(user, workspaceId, messageId); }
   @Post('client-control/drafts/:messageId/review') reviewClientControlDraft(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('messageId') messageId: string, @Body() dto: ReviewClientControlDraftDto) { return this.messaging.reviewClientControlDraft(user, workspaceId, messageId, dto); }
+  @Post('channels/meta') connectMetaChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Body() dto: ConnectMetaChannelDto) { return this.messaging.connectMetaChannel(user, workspaceId, dto); }
+  @Post('channels/meta/:provider/disconnect') disconnectMetaChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('provider') provider: 'instagram' | 'facebook') { return this.messaging.disconnectMetaChannel(user, workspaceId, provider); }
   @Get('meta/status') getMetaStatus(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.getMetaSetupStatus(user, workspaceId); }
   @Get('threads') listThreads(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.listThreads(user, workspaceId); }
   @Post('threads/:threadId/client-control/stage-draft') stageClientControlDraft(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.stageClientControlDraft(user, workspaceId, threadId); }

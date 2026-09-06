@@ -395,3 +395,57 @@ test('system health does not report mock AI as healthy', async () => {
     saved.key === undefined ? delete process.env.OPENAI_API_KEY : process.env.OPENAI_API_KEY = saved.key;
   }
 });
+const owner = { workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'owner' }] };
+const connectDto = { provider: 'instagram', displayName: 'IG', externalAccountId: 'acct-1', accessToken: 'x'.repeat(30), accessExpiresAt: new Date(Date.now() + 60 * 86400000).toISOString() };
+
+test('connecting a meta channel never returns the token and does not enable sending', async () => {
+  const saved = process.env.META_TRANSPORT_ENABLED;
+  delete process.env.META_TRANSPORT_ENABLED;
+  try {
+    const memory = database({ ...owner });
+    const result = await new MessagingService(ai).connectMetaChannel(user, workspace, connectDto);
+    assert.equal(result.sendingEnabled, false, 'connecting must not turn on the transport');
+    assert.equal(result.credential.tokenStored, true);
+    assert.equal(JSON.stringify(result).includes(connectDto.accessToken), false, 'the token must never appear in the response');
+    assert.equal(memory.rows.oauth_connections[0].access_token, connectDto.accessToken, 'token is stored');
+    assert.equal(memory.rows.messaging_channels[0].status, 'connected');
+    assert.equal(memory.rows.messaging_channels[0].external_account_id, 'acct-1');
+  } finally {
+    saved === undefined ? delete process.env.META_TRANSPORT_ENABLED : process.env.META_TRANSPORT_ENABLED = saved;
+  }
+});
+test('only the owner can connect or disconnect a meta channel', async () => {
+  database({ workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'member' }] });
+  await assert.rejects(new MessagingService(ai).connectMetaChannel(user, workspace, connectDto), /Only the workspace owner/);
+  database({ workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'member' }] });
+  await assert.rejects(new MessagingService(ai).disconnectMetaChannel(user, workspace, 'instagram'), /Only the workspace owner/);
+});
+test('an expired token is refused at connect time', async () => {
+  database({ ...owner });
+  await assert.rejects(
+    new MessagingService(ai).connectMetaChannel(user, workspace, { ...connectDto, accessExpiresAt: new Date(Date.now() - 1000).toISOString() }),
+    /already expired/
+  );
+});
+test('a graph account already connected elsewhere cannot be stolen', async () => {
+  database({ ...owner, messaging_channels: [{ id: 'other', workspace_id: 'another-workspace', provider: 'instagram', external_account_id: 'acct-1' }] });
+  await assert.rejects(new MessagingService(ai).connectMetaChannel(user, workspace, connectDto), /already connected to a different workspace/);
+});
+test('reconnecting replaces the credential instead of stacking rows', async () => {
+  const memory = database({ ...owner, oauth_connections: [{ id: 'existing', workspace_id: workspace, provider: 'instagram', access_token: 'old-token', status: 'revoked' }] });
+  await new MessagingService(ai).connectMetaChannel(user, workspace, connectDto);
+  assert.equal(memory.rows.oauth_connections.length, 1, 'must update in place, not insert a second credential');
+  assert.equal(memory.rows.oauth_connections[0].access_token, connectDto.accessToken);
+  assert.equal(memory.rows.oauth_connections[0].status, 'active');
+});
+test('disconnecting clears the stored token', async () => {
+  const memory = database({
+    ...owner,
+    messaging_channels: [{ id: 'c', workspace_id: workspace, provider: 'instagram', status: 'connected' }],
+    oauth_connections: [{ id: 'o', workspace_id: workspace, provider: 'instagram', access_token: 'live-token', status: 'active' }]
+  });
+  await new MessagingService(ai).disconnectMetaChannel(user, workspace, 'instagram');
+  assert.equal(memory.rows.messaging_channels[0].status, 'disconnected');
+  assert.equal(memory.rows.oauth_connections[0].status, 'revoked');
+  assert.equal(memory.rows.oauth_connections[0].access_token, '', 'token must not be left readable after disconnect');
+});
