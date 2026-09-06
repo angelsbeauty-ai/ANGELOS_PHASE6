@@ -245,3 +245,71 @@ test('reschedule retry at the saved time is a no-op', async () => {
   assert.equal(result.duplicatePrevented, true);
   assert.equal(memory.calls.filter(c => c.action !== 'select').length, 0);
 });
+test('meta transport stays dormant unless explicitly enabled', async () => {
+  const { metaTransportEnabled, MetaMessagingAdapter } = require('../apps/api/dist/messaging/meta-transport');
+  const saved = { ...process.env };
+  try {
+    delete process.env.META_TRANSPORT_ENABLED;
+    delete process.env.META_STAGING_WORKSPACE_ID;
+    assert.equal(metaTransportEnabled(workspace), false);
+
+    // Enabled globally but pinned elsewhere must still refuse.
+    process.env.META_TRANSPORT_ENABLED = 'true';
+    process.env.META_STAGING_WORKSPACE_ID = 'a-different-workspace';
+    assert.equal(metaTransportEnabled(workspace), false);
+    process.env.META_STAGING_WORKSPACE_ID = workspace;
+    assert.equal(metaTransportEnabled(workspace), true);
+
+    // With the gate off, send() refuses before any credential load or network call. The
+    // synthetic network guard at the top of this file would throw if it tried either.
+    process.env.META_TRANSPORT_ENABLED = 'false';
+    const result = await new MetaMessagingAdapter().send({
+      externalThreadId: 'psid', body: 'hi', idempotencyKey: 'k',
+      workspaceId: workspace, provider: 'instagram', externalAccountId: 'acct'
+    });
+    assert.equal(result.status, 'failed');
+    assert.match(result.error, /not enabled/);
+  } finally {
+    for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key];
+    Object.assign(process.env, saved);
+  }
+});
+test('meta adapter refuses incomplete routing instead of guessing', async () => {
+  const { MetaMessagingAdapter } = require('../apps/api/dist/messaging/meta-transport');
+  const result = await new MetaMessagingAdapter().send({ externalThreadId: 'psid', body: 'hi', idempotencyKey: 'k' });
+  assert.equal(result.status, 'failed');
+  assert.match(result.error, /requires workspaceId/);
+});
+test('meta transport stays dormant unless explicitly enabled', async () => {
+  const { metaTransportEnabled, MetaMessagingAdapter } = require('../apps/api/dist/messaging/meta-transport');
+  const saved = { enabled: process.env.META_TRANSPORT_ENABLED, pinned: process.env.META_STAGING_WORKSPACE_ID };
+  try {
+    delete process.env.META_TRANSPORT_ENABLED;
+    delete process.env.META_STAGING_WORKSPACE_ID;
+    assert.equal(metaTransportEnabled(workspace), false);
+    process.env.META_TRANSPORT_ENABLED = 'true';
+    process.env.META_STAGING_WORKSPACE_ID = 'a-different-workspace';
+    assert.equal(metaTransportEnabled(workspace), false, 'pinning to another workspace must block this one');
+    process.env.META_STAGING_WORKSPACE_ID = workspace;
+    assert.equal(metaTransportEnabled(workspace), true);
+    // Gate off: send() must refuse before any credential load or network call. The synthetic
+    // network guard at the top of this file would throw if it attempted either.
+    process.env.META_TRANSPORT_ENABLED = 'false';
+    const result = await new MetaMessagingAdapter().send({ externalThreadId: 'psid', body: 'hi', idempotencyKey: 'k', workspaceId: workspace, provider: 'instagram', externalAccountId: 'acct' });
+    assert.equal(result.status, 'failed');
+    assert.match(result.error, /not enabled/);
+  } finally {
+    saved.enabled === undefined ? delete process.env.META_TRANSPORT_ENABLED : process.env.META_TRANSPORT_ENABLED = saved.enabled;
+    saved.pinned === undefined ? delete process.env.META_STAGING_WORKSPACE_ID : process.env.META_STAGING_WORKSPACE_ID = saved.pinned;
+  }
+});
+test('meta adapter refuses incomplete routing instead of guessing', async () => {
+  const { MetaMessagingAdapter } = require('../apps/api/dist/messaging/meta-transport');
+  const result = await new MetaMessagingAdapter().send({ externalThreadId: 'psid', body: 'hi', idempotencyKey: 'k' });
+  assert.equal(result.status, 'failed');
+  assert.match(result.error, /requires workspaceId/);
+});
+test('meta setup status is owner-only and leaks no secret values', async () => {
+  database({ workspace_memberships: [{ workspace_id: workspace, user_id: 'owner', role: 'member' }] });
+  await assert.rejects(new MessagingService(ai).getMetaSetupStatus(user, workspace), /Only the workspace owner/);
+});

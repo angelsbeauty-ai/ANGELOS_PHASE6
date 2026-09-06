@@ -9,7 +9,7 @@ import type { UpdateThreadDto } from './dto/update-thread.dto';
 import type { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
 import { ManualDemoMessagingAdapter, type MessagingProviderAdapter } from './provider-adapter';
 import { flow1StagingEnabled, StagingMessageExecutionService } from './staging-message-execution.service';
-import { MetaMessagingAdapter, metaTransportEnabled } from './meta-transport';
+import { MetaMessagingAdapter, metaCredentialStatus, metaTransportEnabled } from './meta-transport';
 
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
 
@@ -373,6 +373,16 @@ export class MessagingService {
     if (updateError) throw new InternalServerErrorException(updateError.message);
     await service.from('message_threads').update({ status: 'waiting_client', needs_owner: false, last_message_at: sentAt, updated_at: sentAt }).eq('workspace_id', workspaceId).eq('id', thread.id);
     return { message: sentMessage, sent: true, duplicatePrevented: false };
+  }
+
+  /**
+   * Owner-facing setup check for the Meta connection. Reports only whether each piece is
+   * configured -- never a token, secret or key value.
+   */
+  async getMetaSetupStatus(user: AuthUser, workspaceId: string) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can view integration status.');
+    return metaCredentialStatus(workspaceId);
   }
 
   private resolveAdapter(provider: string): MessagingProviderAdapter | null {

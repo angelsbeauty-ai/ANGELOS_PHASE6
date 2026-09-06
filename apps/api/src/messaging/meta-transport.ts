@@ -27,14 +27,58 @@ interface MetaAppCredentials {
  */
 export async function loadMetaAppCredentials(): Promise<MetaAppCredentials> {
   const supabase = createServiceSupabaseClient();
+  // One Meta developer app serves every workspace (the per-workspace part is the Page/IG token
+  // in oauth_connections, not the app itself), but integration_apps.workspace_id is NOT NULL, so
+  // a row is always workspace-tagged. Take the oldest row deterministically rather than erroring
+  // if a second workspace ever adds its own -- the webhook must resolve a secret before it knows
+  // which workspace the payload belongs to, so it cannot filter by workspace here.
   const { data, error } = await supabase
     .from('integration_apps')
     .select('client_key,client_secret')
     .eq('provider', 'meta')
-    .maybeSingle();
+    .order('created_at', { ascending: true })
+    .limit(1);
   if (error) throw new Error(`Could not load Meta app credentials: ${error.message}`);
-  if (!data) throw new Error('No Meta app credentials configured (integration_apps, provider="meta").');
-  return { appId: data.client_key, appSecret: data.client_secret };
+  const row = data?.[0];
+  if (!row) throw new Error('No Meta app credentials configured (integration_apps, provider="meta").');
+  if (!row.client_key?.trim() || !row.client_secret?.trim()) {
+    throw new Error('Meta app credentials row exists but client_key/client_secret is empty.');
+  }
+  return { appId: row.client_key, appSecret: row.client_secret };
+}
+
+/**
+ * Diagnostics for the setup checklist: reports what is configured WITHOUT reading or returning
+ * any secret value. Safe to log and safe to surface to the owner.
+ */
+export async function metaCredentialStatus(workspaceId: string) {
+  const supabase = createServiceSupabaseClient();
+  const [app, connections, channels] = await Promise.all([
+    supabase.from('integration_apps').select('client_key,client_secret').eq('provider', 'meta').limit(1),
+    supabase.from('oauth_connections').select('provider,status,access_expires_at,access_token').eq('workspace_id', workspaceId).in('provider', ['instagram', 'facebook']),
+    supabase.from('messaging_channels').select('provider,status,external_account_id').eq('workspace_id', workspaceId).in('provider', ['instagram', 'facebook'])
+  ]);
+
+  const appRow = app.data?.[0];
+  return {
+    appCredentials: {
+      configured: Boolean(appRow?.client_key?.trim() && appRow?.client_secret?.trim())
+    },
+    webhookVerifyToken: { configured: Boolean(process.env.META_WEBHOOK_VERIFY_TOKEN?.trim()) },
+    transport: { enabled: metaTransportEnabled(workspaceId), pinnedWorkspace: process.env.META_STAGING_WORKSPACE_ID ?? null },
+    connections: (connections.data ?? []).map((row: any) => ({
+      provider: row.provider,
+      status: row.status,
+      tokenPresent: Boolean(row.access_token?.trim()),
+      expiresAt: row.access_expires_at,
+      expired: Boolean(row.access_expires_at && new Date(row.access_expires_at).getTime() <= Date.now())
+    })),
+    channels: (channels.data ?? []).map((row: any) => ({
+      provider: row.provider,
+      status: row.status,
+      externalAccountIdPresent: Boolean(row.external_account_id?.trim())
+    }))
+  };
 }
 
 interface MetaConnection {
