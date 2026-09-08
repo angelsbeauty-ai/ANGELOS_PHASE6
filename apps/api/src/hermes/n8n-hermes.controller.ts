@@ -56,13 +56,17 @@ export class N8nHermesController {
    * Accepts both POST (with body) and GET (with query param or path param).
    */
   @Post('overview')
+  async overviewPost(@Body() body: { workspaceId?: string } | undefined) {
+    const workspaceId = body?.workspaceId ?? 'default';
+    return this.controlService.getOverviewAsSystem(workspaceId);
+  }
+
   @Get('overview')
-  async overview(
-    @Body() body: { workspaceId?: string } | undefined,
+  async overviewGet(
     @Query('workspaceId') workspaceIdQuery?: string,
     @Param('workspaceId') workspaceIdParam?: string
   ) {
-    const workspaceId = body?.workspaceId ?? workspaceIdQuery ?? workspaceIdParam ?? 'default';
+    const workspaceId = workspaceIdQuery ?? workspaceIdParam ?? 'default';
     return this.controlService.getOverviewAsSystem(workspaceId);
   }
 
