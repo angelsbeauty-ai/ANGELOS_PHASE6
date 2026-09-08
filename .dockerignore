@@ -1,7 +1,9 @@
 .git
 node_modules
 **/node_modules
-**/dist
+# Allow root dist/ (for Railway CMD), exclude nested dist/ (build outputs)
+!dist
+**/dist/*
 **/.env
 **/.env.*
 !.env.example
