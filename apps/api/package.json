@@ -6,6 +6,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
+    "postbuild": "mkdir -p ../dist && cp -r dist/* ../dist/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
