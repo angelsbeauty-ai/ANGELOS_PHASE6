@@ -118,3 +118,150 @@ Send me:
 - Which step you were on.
 
 I can read logs and fix code from there — I just can't do the Meta dashboard or Supabase data-entry steps for you.
+
+---
+
+## 9. LINE outbound — human setup (do this only when ready to test real LINE sends)
+
+**Status: FULLY BUILT AND VERIFIED (transport OFF).** The LINE outbound code path is complete and tested locally. No real LINE messages can be sent until you complete this section.
+
+**What's verified locally (no real LINE needed):**
+- `scripts/line-adapter.test.mjs` — 13/13 unit tests (adapter class, mocked fetch): credential auth, send-once idempotency, missing credential fails closed, transport disabled blocks send, status endpoint hides secrets, adapter-level validation
+- `scripts/line-test.mjs` — 3/3 harness tests + 1/1 skip: transport disabled → 409 (adapter not resolved), transport enabled + unreachable LINE API → 500 with DB lifecycle closed (message failed, send attempt recorded as unknown with error_message + finished_at via `sendMessage` at messaging.service.ts:623), duplicate send blocked when prior attempt is unknown
+- `npm run build:api` — PASS
+- `npm run verify:static` — PASS (5/5 checks)
+- `npm run test:synthetic` — PASS (Flow 1 + core safety + Hermes control layer integration — 82/82 tests + 1 skip, all green)
+- `npm run typecheck` — PASS
+
+**What the harness tests prove:** The honest DB lifecycle and the transport gate. The harness blocks external network, so these tests do NOT cover the happy LINE API path (LINE API returns 200 → adapter.send returns `{sent:true}`). That path is covered by the adapter unit tests (13/13) and by the adapter's implementation.
+
+**Migration note:** `supabase/migrations/20260907052000_oauth_connections_table.sql` creates `oauth_connections` and `integration_apps` tables for the local/harness DB. It uses `create table if not exists`, `alter table ... enable row level security` (idempotent), and role-gated GRANT/REVOKE inside `DO $$ IF EXISTS` blocks. It is SAFE and IDEMPOTENT against the live Supabase project — but the live Supabase already has these tables (created out of band, same pattern as the original approvals tables before `20260905181853_approvals_schema.sql`). Running this migration against live is safe but unnecessary. Do NOT apply it unless you first verify the live schema matches.
+
+### 9a. Get a LINE channel access token
+
+1. Go to [LINE Developers Console](https://developers.line.biz/) → your provider → **Messaging API** channel.
+2. Under **Channel access token**, issue a new token. Note its expiry.
+3. Copy the **Channel secret** from Channel settings.
+
+### 9b. Store credentials in Supabase (dashboard, not chat)
+
+**Table `oauth_connections`** — one row:
+| column | value |
+|---|---|
+| `workspace_id` | your workspace UUID |
+| `provider` | `line` |
+| `access_token` | the channel access token from 9a |
+| `access_expires_at` | its expiry timestamp |
+| `status` | `active` |
+| `open_id` | the LINE user ID you want to send to (or leave for now) |
+
+**Table `integration_apps`** — one row:
+| column | value |
+|---|---|
+| `workspace_id` | your workspace UUID |
+| `provider` | `line` |
+| `client_key` | the channel access token (or channel ID — whichever your setup uses as the identifier) |
+| `client_secret` | the channel secret from 9a |
+
+**Table `messaging_channels`** — one row:
+| column | value |
+|---|---|
+| `workspace_id` | your workspace UUID |
+| `provider` | `line` |
+| `display_name` | e.g. "LINE Official Account" |
+| `external_account_id` | the LINE user ID / destination ID |
+| `status` | `connected` |
+| `capabilities` | `{"inbound": true, "outbound": true}` |
+
+### 9c. Set Railway environment variables (what turns on real sending)
+
+On the `@angelos/api` service in Railway:
+- `LINE_TRANSPORT_ENABLED=true`
+- `LINE_STAGING_WORKSPACE_ID=<your workspace UUID>`
+
+**Leave these unset** until you're ready to send real messages. Without them, `lineTransportEnabled()` returns false and every LINE send path safely stops with a 409 ConflictException.
+
+### 9d. Inbound LINE (separate from outbound)
+
+LINE inbound messages arrive via webhook. Two options:
+- **n8n webhook** → AngelOS inbound endpoint (existing pattern — same as Meta webhook).
+- **Direct LINE webhook** → a dedicated webhook endpoint in AngelOS (not built yet — ask if you want this).
+
+The outbound path tested here is independent of inbound — you can send LINE replies once credentials are in place, even before inbound is set up.
+
+### 9e. Test outbound (this is the one that sends a real LINE message — do this deliberately)
+
+Only after credentials are stored:
+1. Confirm `LINE_TRANSPORT_ENABLED=true` and `LINE_STAGING_WORKSPACE_ID` are set on Railway. Redeploy.
+2. In AngelOS, open a LINE thread, draft or write a reply, approve/send it.
+3. Confirm the reply arrives on the real LINE thread.
+4. Check `message_send_attempts` in Supabase — should show exactly one row, `status = sent`.
+
+### 9f. The real LINE path (once credentials exist)
+
+inbound webhook/n8n → staged draft → owner review → explicit send release → LINE adapter → `message_send_attempts`/result
+
+The outbound path: owner drafts/writes reply → `approveAndSend` → `sendMessage` → `resolveAdapter('line')` → `LineMessagingAdapter.send()` → `message_send_attempts` (idempotency key `message:{messageId}` + status + `finished_at`) → message marked `sent`/`failed`, thread updated.
+
+The code is ready. The transport is OFF. Nothing sends until you set the env vars.
+
+## 10. Hermes / Planner control layer — human setup
+
+**Status: CODE COMPLETE. LIVE TEST PENDING.** The Hermes/Planner control layer is fully built and the backend compiles/tests green. No live deployment has occurred.
+
+**What's built (code-side, ready):**
+- `apps/api/src/hermes/hermes-task.service.ts` — Hermes task store: `create()`, `getOne()`, `listRecent()`, `updateStatus()` (approve, record result). Idempotent on `(workspace_id, source_ref)`. RLS: workspace members read/write; service_role full access for n8n callback. Uses `workspace_memberships` table to resolve workspace (reuses existing AngelOS pattern).
+- `apps/api/src/hermes/hermes-control.service.ts` — Unified overview: `GET /workspaces/:ws/hermes/overview` surfaces pending approvals + attention items + system health in ONE place.
+- `apps/api/src/hermes/hermes-control.controller.ts` — Endpoints: `POST /hermes/tasks` (create), `GET /hermes/tasks` (list), `GET /hermes/tasks/:id` (get), `POST /hermes/tasks/:id/approve`, `POST /hermes/tasks/:id/result`. All behind `SupabaseAuthGuard`.
+- `apps/api/src/hermes/n8n-callback.controller.ts` — `POST /hermes/n8n/callback` — records Hermes Builder result in Supabase + fires Telegram callback if stored.
+- `apps/api/src/hermes/hermes-builder-executor.service.ts` — `execute()` — Hermes Builder execution engine. Demo-mode: simulates build/fix/review/status tasks with realistic output. In production, hooks into real OpenAI + code execution.
+- `apps/api/src/hermes/hermes-builder-result-recorder.service.ts` — `recordResult()` — standalone result recorder for n8n callback. Safe JSON serialization for Supabase storage.
+- `n8n/angelos-planner-bot-workflow.json` — Updated n8n workflow: AngelOS API calls (create task, get status), Hermes Builder execution branch, results → Telegram. 24 nodes, 13 connection groups.
+- `n8n/angelos-intent-router.js` — Intent classification: status/blockers/next/build/fix/review/plan/chat. Maps to n8n workflow branches.
+
+**What Angel must personally do:**
+1. **Supabase migration** — Apply `supabase/migrations/20260908000000_hermes_tasks_table.sql` to your Supabase project. Go to Supabase Dashboard → SQL Editor → paste the migration → Run. The migration creates the `hermes_tasks` table with RLS (workspace members can read/write; service_role full access for n8n). It is idempotent (`create table if not exists`).
+2. **Railway deployment** — The Hermes/Planner endpoints need to be deployed to your `@angelos/api` Railway service. Either point Railway at the `integration/angelos-core` branch, or merge to `main`. Nothing works until the API on `angelosapi-production.up.railway.app` contains this code.
+3. **n8n workflow import** — In your n8n instance: Workflows → Import from File → select `n8n/angelos-planner-bot-workflow.json`. The workflow calls AngelOS API endpoints (`POST /hermes/tasks`, `GET /hermes/overview`). These need the API to be deployed first.
+4. **n8n credential** — The workflow references `AngelOS-Planner-Telegram-Bot` (Telegram) and OpenAI credential. Create/reuse these in n8n credentials.
+5. **Environment variables** — The n8n workflow needs `ANGELOS_API_URL` set to your deployed API URL (default `https://angelosapi-production.up.railway.app`). Set this in your n8n environment or as a workflow parameter.
+6. **Telegram bot** — Create via @BotFather on Telegram. Get the bot token. **Do NOT paste the token in chat.** Store it in n8n Telegram Bot API credential.
+7. **Angel Telegram user ID** — Find via @userinfobot on Telegram (e.g., `123456789`). Store as n8n text credential `AngelOS-Planner-Angel-UserId` (must match workflow).
+
+**What the control layer does NOT do:** does NOT deploy, publish, or send real messages; does NOT touch real clients or the old live LINE workflow; does NOT expose any tokens or credentials; does NOT require manual Supabase row editing after migration applied (all rows are created by the API).
+
+**Current blocker for live testing:** API not deployed to Railway + n8n not running + Supabase migration not applied. Code is complete and tested. Once deployed, you can test: `/status` in Telegram → AngelOS overview API → status reply in Telegram. `/build X` → create task → Hermes Builder execute → result → Telegram.
+
+**If something's wrong:** send the exact error (from n8n, Railway logs, or Telegram), which step you were on. I can fix the code from logs — I just can't do the Meta/NLINE/n8n/BotFather/Railway dashboard steps for you.
+
+---
+
+## 11. Telegram Planner Bot — Human Setup (temporary bridge, not AngelOS)
+
+This bot is a TEMPORARY remote-control channel so Angel can talk to Hermes while away from the laptop. Telegram is NOT AngelOS, NOT the final UI, NOT the approval center.
+
+**What's built (code-side, ready):**
+- `n8n/angelos-planner-bot-workflow.json` — Updated portable n8n workflow (24 nodes): Telegram trigger → Angel-only guard → command router → OpenAI + canned replies AND AngelOS API calls (create task, get status) AND Hermes Builder execution branch → Telegram reply. Valid JSON, validated.
+- `n8n/angelos-planner-system-instructions.md` — Full OpenAI system instructions for the Planner Agent.
+- `n8n/angelos-planner-bot-worker.js` — n8n Code node worker (Angel-only enforcement, command dispatch, intent classification). Valid JS, syntax-checked.
+- `n8n/angelos-intent-router.js` — Intent classification module (status/blockers/next/build/fix/review/plan/chat). Valid JS.
+
+**Commands:** /status, /help, /blockers (canned replies — no OpenAI needed). /next, /continue, /report, /plan, /chat (OpenAI chat node — uses system instructions + Angel's message). Build/fix/review intents → AngelOS API task creation + Hermes Builder execution → result back to Telegram.
+
+**What Angel must personally do:**
+1. **Start n8n** — `npx --yes n8n start --host 127.0.0.1 --port 5678` (or your normal n8n setup). Confirm it's running: `curl http://127.0.0.1:5678/api/status`.
+2. **BotFather** — create the Telegram bot: open Telegram → @BotFather → `/newbot` → name it (e.g. "AngelOS Planner") → copy the bot token. **Do NOT paste the token in chat.** Store it in n8n.
+3. **n8n credentials** — create:
+   - Telegram Bot API credential (paste BotFather token). Name: `AngelOS-Planner-Telegram-Bot` (must match workflow JSON: `AngelOS-Planner-Telegram-Bot`).
+   - OpenAI API credential (reuse existing OpenAI credential if available). Name: `AngelOS-OpenAI` (must match: `AngelOS-OpenAI`).
+   - Text credential: `AngelOS-Planner-Angel-UserId` — your Telegram numeric user ID (find via @userinfobot on Telegram, e.g. `123456789`).
+4. **Import the updated workflow** — n8n: Workflows → Import from File → select `n8n/angelos-planner-bot-workflow.json`. Connect the credentials. The workflow now calls AngelOS API endpoints — these need the API deployed first.
+5. **Activate** — toggle the workflow Active. The Telegram Trigger starts listening.
+6. **Test (safe):** `/help` → help message. `/status` → canned status (or AngelOS overview if API deployed). `/blockers` → canned blockers. Any non-command → OpenAI chat. `/next` → canned "need state first". Anyone else → "This bot is for Angel only." `/build X` → creates task in AngelOS (if API deployed) → Hermes Builder executes → result in Telegram.
+
+**What the bot does NOT do:** does NOT deploy, publish, or send real messages; does NOT touch real clients or the old live LINE workflow; does NOT build a second AngelOS; does NOT read live n8n/Supabase state (unless you paste it); does NOT expose Telegram bot token or OpenAI credentials.
+
+**Current blocker:** n8n is not reachable from this machine during the build — the workflow JSON, system instructions, worker, intent router, and setup doc are all built and ready. Once n8n is running and reachable, Angel imports the updated workflow, connects credentials, and the bot is live in Telegram.
+
+**If something's wrong:** send the exact n8n workflow error (if any), the Telegram error (if any), and whether n8n is running/reachable. I can fix the workflow from the logs — I just can't do BotFather or n8n credential steps for you.
+

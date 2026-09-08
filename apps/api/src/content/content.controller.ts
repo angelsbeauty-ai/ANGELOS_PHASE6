@@ -52,4 +52,9 @@ export class ContentController {
   publishNow(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('variantId') variantId: string) {
     return this.content.publishNow(user, workspaceId, variantId);
   }
+
+  @Get('publish-status')
+  publishStatus(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) {
+    return this.content.getPublishStatus(user, workspaceId);
+  }
 }

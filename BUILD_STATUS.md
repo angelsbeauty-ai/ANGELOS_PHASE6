@@ -38,6 +38,8 @@ Both Railway projects point at one Supabase database, so splitting Railway envir
 | Bookings (incl. owner journey: confirm/cancel/complete) | BUILT / CONNECTED / INTERNALLY PROVEN |
 | Messaging core | BUILT / CONNECTED / INTERNALLY PROVEN |
 | LINE Client Control | BUILT / CONNECTED / INTERNALLY PROVEN — writer connected, queue no longer dead |
+|| LINE outbound adapter (this session) | **CODE READY / TRANSPORT OFF / HUMAN SETUP LATER** — full build verified: `LineMessagingAdapter` built, `resolveAdapter('line')` wired behind `lineTransportEnabled()` gate (off by default), safe credential loading from `oauth_connections`/`integration_apps`/`messaging_channels`, send-once idempotency via `message_send_attempts`, result recording with `finished_at`; unit tests 13/13, harness integration tests 3/3 + 1/1 skip; no live send, no production activation, no changes to old live LINE workflow; migration `20260907052000_oauth_connections_table.sql` is safe+idempotent, for local/harness DB only (live Supabase already has the tables out of band) |
+|| Hermes/Planner control layer (this session) | **BUILT / NOT DEPLOYED** — unified `/workspaces/:ws/hermes/overview` surfaces pending approvals + attention items + system health in one place; `/workspaces/:ws/hermes/decide` routes approval decisions; full Hermes task lifecycle (`POST /hermes/tasks`, `GET /hermes/tasks`, `GET /hermes/tasks/:id`, `POST /hermes/tasks/:id/approve`, `POST /hermes/tasks/:id/result`); n8n callback endpoint (`POST /hermes/n8n/callback`); Hermes Builder executor service with demo-mode execution + Supabase result recording; n8n orchestration workflow JSON updated with AngelOS API calls. Build green, 82/82 tests + 1 skip. CODE COMPLETE. LIVE TEST PENDING n8n deployment + credential config. |
 | Flow 1 (LINE approval → guarded send) | INTERNALLY PROVEN in the disposable project only; dormant + unapplied on real |
 | Meta transport (Instagram/Facebook send) | BUILT / INTERNALLY PROVEN — **dormant**, NEEDS FINAL TEST |
 | Meta inbound webhook | BUILT — NEEDS FINAL TEST (needs your Meta app registered) |
@@ -67,5 +69,6 @@ No webhook is registered with Meta. `N8N_WEBHOOK_APPROVAL_EXECUTE` is unset, so 
 ## Continuation point
 
 1. **Blocked on you:** approve `blissful-courtesy` retirement; do the Meta App setup in SELF_TEST.md.
-2. Then: Instagram inbound E2E → Facebook reuse (same adapter, `provider='facebook'`) → production activation approval.
-3. Unblocked backlog: Clients/CRM unreachable routes (`PATCH` client, consents — the only path that sets `do_not_auto_message`), Content Control.
+2. Hermes/Planner control layer — **BUILT** this session: unified `/workspaces/:workspaceId/hermes/overview` and `/workspaces/:workspaceId/hermes/decide` endpoints surfaced all pending approvals + attention items + system health in one place
+3. Then: Instagram inbound E2E → Facebook reuse (same adapter, `provider='facebook'`) → production activation approval.
+4. Unblocked backlog: Clients/CRM unreachable routes (`PATCH` client, consents — the only path that sets `do_not_auto_message`), Content Control.

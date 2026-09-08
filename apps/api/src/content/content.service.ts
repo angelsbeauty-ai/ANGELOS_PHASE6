@@ -298,7 +298,46 @@ export class ContentService {
       return fallback;
     }
   }
+
+  async getPublishStatus(user: AuthUser, workspaceId: string) {
+    const supabase = createUserSupabaseClient(user.accessToken);
+    const { data: posts, error } = await supabase
+      .from('content_posts')
+      .select('*,variants:content_variants(*)')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    const postsList = (posts ?? []).map((p: any) => {
+      const variants = (p.variants ?? []).map((v: any) => ({
+        id: v.id, platform: v.platform, status: v.status,
+        caption: v.caption ?? undefined, scheduledFor: v.scheduled_for ?? undefined,
+        publishedAt: v.published_at ?? undefined, providerPostId: v.provider_post_id ?? undefined
+      }));
+      return {
+        id: p.id, title: p.title, status: p.status, objective: p.objective,
+        createdAt: p.created_at, approvedAt: p.approved_at ?? undefined,
+        scheduledFor: p.scheduled_for ?? undefined, publishedAt: p.published_at ?? undefined,
+        variants
+      };
+    });
+
+    const counts = {
+      total: postsList.length,
+      prepared: postsList.filter(p => p.status === 'prepared').length,
+      approved: postsList.filter(p => p.status === 'approved').length,
+      scheduled: postsList.filter(p => p.status === 'scheduled').length,
+      publishing: postsList.filter(p => p.status === 'publishing').length,
+      published: postsList.filter(p => p.status === 'published').length,
+      failed: postsList.filter(p => p.status === 'failed').length
+    };
+
+    return { workspaceId, posts: postsList, ...counts };
+  }
 }
+
+
 
 
 function buildRuleBasedMediaRecommendation(ranked: Array<{ asset: any; score: number }>, objective?: string) {
