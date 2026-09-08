@@ -33,6 +33,7 @@ export class N8nHermesController {
    */
   @Post('tasks')
   async createTask(
+    @Param('workspaceId') workspaceIdParam: string,
     @Body() body: {
       source_ref?: string;
       source?: string;
@@ -43,10 +44,9 @@ export class N8nHermesController {
       needs_owner_approval?: boolean;
       n8n_execution_id?: string;
       n8n_callback_url?: string;
-      workspaceId?: string;
     }
   ) {
-    const workspaceId = body.workspaceId || 'default';
+    const workspaceId = workspaceIdParam || 'default';
     return this.systemTaskService.createAsSystem(workspaceId, body, body.n8n_execution_id);
   }
 
