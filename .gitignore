@@ -3,7 +3,9 @@ node_modules
 .env
 .env.*
 !.env.example
-dist
+# Allow root dist/ for Railway CMD entry point (postbuild output + wrapper)
+!dist
+!dist/*
 coverage
 supabase/.temp/
 .DS_Store

@@ -1,9 +1,13 @@
 .git
 node_modules
 **/node_modules
-# Allow root dist/ (for Railway CMD), exclude nested dist/ (build outputs)
+# Allow root dist/ (for Railway CMD via postbuild) — this is a legitimate entry point
 !dist
-**/dist/*
+!dist/*
+# Exclude build output dist dirs (apps/*/dist, packages/*/dist, etc.)
+**/*/dist
+**/*/dist/*
+# Secrets
 **/.env
 **/.env.*
 !.env.example
