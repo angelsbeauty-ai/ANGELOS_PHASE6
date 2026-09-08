@@ -33,7 +33,7 @@ export class N8nHermesService {
       n8n_execution_id: execId,
       n8n_callback_url: body.n8n_callback_url || null,
       n8n_status: 'queued',
-      created_by: 'n8n',
+      created_by: null,
       created_at: now,
       updated_at: now
     };
