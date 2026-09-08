@@ -31,7 +31,7 @@ export class HermesBuilderResultRecorder {
       status,
       hermes_result: serializedResult,
       hermes_error: error ?? null,
-      hermes_execution_id: executionId,
+      n8n_execution_id: executionId,
       n8n_status: status,
       updated_at: now
     };
