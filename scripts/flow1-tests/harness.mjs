@@ -81,7 +81,7 @@ export async function startHarness() {
       grant usage on schema public,auth to anon,authenticated,service_role;
       grant execute on function auth.uid() to anon,authenticated,service_role;
     `);
-    const migrations = ['0001_foundation.sql','0003_crm.sql','0005_unified_messaging.sql','0010_needs_attention_system_health.sql','20260905181853_approvals_schema.sql','20260905181901_staging_flow1_execution.sql'];
+    const migrations = ['0001_foundation.sql','0003_crm.sql','0005_unified_messaging.sql','0010_needs_attention_system_health.sql','20260905181853_approvals_schema.sql','20260905181901_staging_flow1_execution.sql','20260907052000_oauth_connections_table.sql'];
     for (const file of migrations) await pool.query(await fs.readFile(path.join(root, 'supabase/migrations', file), 'utf8'));
     // Deliberately NO uniqueness constraint: duplicate adapter calls must be observable.
     await pool.query('create table flow1_test_provider_calls(id bigint generated always as identity primary key,idempotency_key text not null,body text not null)');
@@ -123,7 +123,7 @@ export async function startHarness() {
           } catch (error) { return { data:null,error:{code:error.code,message:error.message} }; }
         },
         from(table) {
-          if (!['workspace_memberships','workspaces','clients','messaging_channels','client_channel_identities','message_threads','client_messages','message_internal_notes','approvals','approval_history','workspace_operational_controls'].includes(table)) throw new Error(`Unexpected table: ${table}`);
+          if (!['workspace_memberships','workspaces','clients','messaging_channels','client_channel_identities','message_threads','client_messages','message_internal_notes','approvals','approval_history','workspace_operational_controls','oauth_connections','integration_apps','message_send_attempts'].includes(table)) throw new Error(`Unexpected table: ${table}`);
           let action='select', payload, select='*', filters=[], order, limit, single=false, required=false, conflict;
           const q = {
             select(value='*') { select=value; return q; },

@@ -378,10 +378,10 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || 'default' }}/hermes/n8n/tasks",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/tasks",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"source_ref\": \"={{ $json.update?.message?.message_id }}\",\n  \"source\": \"telegram\",\n  \"source_channel\": \"telegram\",\n  \"workspaceId\": \"={{ .workspaceId || \"default\" }}\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"task_text\": \"={{ $json.text }}\",\n  \"task_json\": \"={{ $json.text }}\",\n  \"needs_owner_approval\": false,\n  \"n8n_execution_id\": \"={{ $executionId || $now.strftime('%Y%m%d-%H%M%S') }}\",\n  \"n8n_callback_url\": \"={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || 'default' }}/hermes/n8n/callback\"\n}",
+        "jsonBody": "{\n  \"source_ref\": \"={{ $json.update?.message?.message_id }}\",\n  \"source\": \"telegram\",\n  \"source_channel\": \"telegram\",\n  \"workspaceId\": \"={{ $json.workspaceId || \"2f420624-2422-4fc3-b00a-f697b68a877d\" }}\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"task_text\": \"={{ $json.text }}\",\n  \"task_json\": \"={{ $json.text }}\",\n  \"needs_owner_approval\": false,\n  \"n8n_execution_id\": \"={{ $executionId || $now.strftime('%Y%m%d-%H%M%S') }}\",\n  \"n8n_callback_url\": \"={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/callback\"\n}",
         "options": {
           "response": {
             "response": true
@@ -396,11 +396,16 @@
         850,
         100
       ],
-      "credentials": {}
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AngelOS-Header-Auth",
+          "name": "AngelOS Header Auth"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Parse the Hermes task creation response\nconst taskResponse = $input.first().json;\nconst taskId = taskResponse.id;\nconst status = taskResponse.status;\n\n// Prepare data for the Hermes Builder execution branch\nreturn [{\n  json: {\n    taskId: taskId,\n    intent: $json.intent,\n    text: $json.text,\n    chatId: $json.chatId,\n    command: $json.command,\n    workspaceId: $json.workspaceId || 'default',\n    taskCreated: true,\n    taskStatus: status\n  }\n}];"
+        "jsCode": "// Parse the Hermes task creation response\nconst taskResponse = $input.first().json;\nconst taskId = taskResponse.id;\nconst status = taskResponse.status;\n\n// Prepare data for the Hermes Builder execution branch\nreturn [{\n  json: {\n    taskId: taskId,\n    intent: $json.intent,\n    text: $json.text,\n    chatId: $json.chatId,\n    command: $json.command,\n    workspaceId: $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d',\n    taskCreated: true,\n    taskStatus: status\n  }\n}];"
       },
       "id": "parse-task-response",
       "name": "Parse Task Response",
@@ -414,7 +419,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || 'default' }}/hermes/n8n/execute",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/execute",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"taskId\": \"={{ $json.taskId }}\",\n  \"model\": \"gpt-4o\",\n  \"timeoutMs\": 300000\n}",
@@ -431,7 +436,13 @@
       "position": [
         1250,
         100
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AngelOS-Header-Auth",
+          "name": "AngelOS Header Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -473,7 +484,7 @@
     {
       "parameters": {
         "httpMethod": "GET",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || 'default' }}/hermes/n8n/overview",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/overview",
         "options": {
           "response": {
             "response": true
@@ -487,7 +498,13 @@
       "position": [
         850,
         200
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AngelOS-Header-Auth",
+          "name": "AngelOS Header Auth"
+        }
+      }
     },
     {
       "parameters": {
