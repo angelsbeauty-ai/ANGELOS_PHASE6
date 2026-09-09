@@ -8,9 +8,11 @@ import type { CreateReplyDto } from './dto/create-reply.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
 import type { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
 import type { ConnectMetaChannelDto } from './dto/connect-meta-channel.dto';
+import type { ConnectLineChannelDto } from './dto/connect-line-channel.dto';
 import { ManualDemoMessagingAdapter, type MessagingProviderAdapter } from './provider-adapter';
 import { flow1StagingEnabled, StagingMessageExecutionService } from './staging-message-execution.service';
 import { MetaMessagingAdapter, metaCredentialStatus, metaTransportEnabled } from './meta-transport';
+import { LineMessagingAdapter, lineCredentialStatus, lineTransportEnabled } from './line-transport';
 
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
 
@@ -286,6 +288,98 @@ export class MessagingService {
     return { provider, channelsDisconnected: channel.data?.length ?? 0, credentialsRevoked: credential.data?.length ?? 0 };
   }
 
+  /**
+   * Connect a LINE channel without hand-editing Supabase tables.
+   * Same pattern as connectMetaChannel — writes the channel (messaging_channels) and the
+   * credential (oauth_connections), owner-only, token stored once and never read back.
+   * Connecting does not enable sending; LINE_TRANSPORT_ENABLED still gates that.
+   */
+  async connectLineChannel(user: AuthUser, workspaceId: string, dto: ConnectLineChannelDto) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can connect a messaging account.');
+    if (new Date(dto.accessExpiresAt).getTime() <= Date.now()) {
+      throw new BadRequestException('That access token is already expired. Generate a fresh channel access token first.');
+    }
+
+    const service = createServiceSupabaseClient();
+    const externalAccountId = dto.externalAccountId.trim();
+
+    const { data: clash, error: clashError } = await service
+      .from('messaging_channels')
+      .select('id, workspace_id')
+      .eq('provider', 'line')
+      .eq('external_account_id', externalAccountId)
+      .maybeSingle();
+    if (clashError) throw new InternalServerErrorException(clashError.message);
+    if (clash && clash.workspace_id !== workspaceId) {
+      throw new ConflictException('That LINE account is already connected to a different workspace.');
+    }
+
+    const now = new Date().toISOString();
+    const channelPayload = {
+      workspace_id: workspaceId,
+      provider: 'line',
+      display_name: dto.displayName.trim(),
+      external_account_id: externalAccountId,
+      status: 'connected',
+      capabilities: { inbound: true, outbound: true },
+      updated_at: now
+    };
+    const channel = clash
+      ? await service.from('messaging_channels').update(channelPayload).eq('id', clash.id).select('id, provider, display_name, external_account_id, status').single()
+      : await service.from('messaging_channels').insert({ ...channelPayload, created_by: user.id }).select('id, provider, display_name, external_account_id, status').single();
+    if (channel.error) throw new InternalServerErrorException(channel.error.message);
+
+    const { data: existing, error: existingError } = await service
+      .from('oauth_connections')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', 'line')
+      .maybeSingle();
+    if (existingError) throw new InternalServerErrorException(existingError.message);
+
+    const credential = {
+      workspace_id: workspaceId,
+      provider: 'line',
+      access_token: dto.accessToken,
+      access_expires_at: dto.accessExpiresAt,
+      scopes: dto.scopes?.trim() || null,
+      open_id: externalAccountId,
+      status: 'active',
+      last_error: null,
+      updated_at: now
+    };
+    const saved = existing
+      ? await service.from('oauth_connections').update(credential).eq('id', existing.id)
+      : await service.from('oauth_connections').insert(credential);
+    if (saved.error) throw new InternalServerErrorException(saved.error.message);
+
+    return {
+      channel: channel.data,
+      credential: { provider: 'line', status: 'active', expiresAt: dto.accessExpiresAt, tokenStored: true },
+      sendingEnabled: lineTransportEnabled(workspaceId)
+    };
+  }
+
+  /** Owner-only. Disconnects LINE without deleting history: the channel stops sending and the stored token is cleared. */
+  async disconnectLineChannel(user: AuthUser, workspaceId: string) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can disconnect a messaging account.');
+    const service = createServiceSupabaseClient();
+    const now = new Date().toISOString();
+    const channel = await service.from('messaging_channels').update({ status: 'disconnected', updated_at: now }).eq('workspace_id', workspaceId).eq('provider', 'line').select('id');
+    if (channel.error) throw new InternalServerErrorException(channel.error.message);
+    const credential = await service.from('oauth_connections').update({ status: 'revoked', access_token: '', updated_at: now }).eq('workspace_id', workspaceId).eq('provider', 'line').select('id');
+    if (credential.error) throw new InternalServerErrorException(credential.error.message);
+    return { provider: 'line', channelsDisconnected: channel.data?.length ?? 0, credentialsRevoked: credential.data?.length ?? 0 };
+  }
+
+  async getLineSetupStatus(user: AuthUser, workspaceId: string) {
+    const membership = await this.getWorkspaceMembership(user, workspaceId);
+    if (membership.role !== 'owner') throw new ForbiddenException('Only the workspace owner can view integration status.');
+    return lineCredentialStatus(workspaceId);
+  }
+
   async listThreads(user: AuthUser, workspaceId: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
     const { data, error } = await supabase
@@ -525,7 +619,8 @@ export class MessagingService {
       externalAccountId: thread.channel.external_account_id
     });
     const { error: attemptError } = await service.from('message_send_attempts').update({
-      status: result.status, provider_response: result.raw ?? null, error_message: result.error ?? null
+      status: result.status, provider_response: result.raw ?? null, error_message: result.error ?? null,
+      finished_at: new Date().toISOString()
     }).eq('workspace_id', workspaceId).eq('idempotency_key', idempotencyKey);
     if (attemptError) throw new InternalServerErrorException(attemptError.message);
     if (result.status !== 'sent') {
@@ -551,6 +646,7 @@ export class MessagingService {
 
   private resolveAdapter(provider: string): MessagingProviderAdapter | null {
     if (provider === 'manual') return this.manualAdapter;
+    if (provider === 'line' && lineTransportEnabled()) return new LineMessagingAdapter();
     if ((provider === 'instagram' || provider === 'facebook') && metaTransportEnabled()) return new MetaMessagingAdapter();
     return null;
   }

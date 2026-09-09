@@ -11,6 +11,7 @@ import { InternalNoteDto } from './dto/internal-note.dto';
 import { TranslateMessageDto } from './dto/translate-message.dto';
 import { ReviewClientControlDraftDto } from './dto/review-client-control-draft.dto';
 import { ConnectMetaChannelDto } from './dto/connect-meta-channel.dto';
+import { ConnectLineChannelDto } from './dto/connect-line-channel.dto';
 
 @Controller('workspaces/:workspaceId/messaging')
 @UseGuards(SupabaseAuthGuard)
@@ -25,6 +26,9 @@ export class MessagingController {
   @Post('channels/meta') connectMetaChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Body() dto: ConnectMetaChannelDto) { return this.messaging.connectMetaChannel(user, workspaceId, dto); }
   @Post('channels/meta/:provider/disconnect') disconnectMetaChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('provider') provider: 'instagram' | 'facebook') { return this.messaging.disconnectMetaChannel(user, workspaceId, provider); }
   @Get('meta/status') getMetaStatus(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.getMetaSetupStatus(user, workspaceId); }
+  @Post('channels/line') connectLineChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Body() dto: ConnectLineChannelDto) { return this.messaging.connectLineChannel(user, workspaceId, dto); }
+  @Post('channels/line/disconnect') disconnectLineChannel(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.disconnectLineChannel(user, workspaceId); }
+  @Get('line/status') getLineStatus(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.getLineSetupStatus(user, workspaceId); }
   @Get('threads') listThreads(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) { return this.messaging.listThreads(user, workspaceId); }
   @Post('threads/:threadId/client-control/stage-draft') stageClientControlDraft(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.stageClientControlDraft(user, workspaceId, threadId); }
   @Get('threads/:threadId/client-control-context') getClientControlContext(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('threadId') threadId: string) { return this.messaging.getClientControlContext(user, workspaceId, threadId); }
