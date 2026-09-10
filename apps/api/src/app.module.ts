@@ -20,9 +20,10 @@ import { FounderModule } from './founder/founder.module';
 import { ProductAnalyticsModule } from './product-analytics/product-analytics.module';
 import { BetaModule } from './beta/beta.module';
 import { BetaAccessGuard } from './common/guards/beta-access.guard';
+import { HermesModule } from './hermes/hermes.module';
 
 @Module({
-  imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule],
+  imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule, HermesModule],
   providers: [
     { provide: APP_GUARD, useClass: EmergencyReadOnlyGuard },
     { provide: APP_GUARD, useClass: SubscriptionAccessGuard },
