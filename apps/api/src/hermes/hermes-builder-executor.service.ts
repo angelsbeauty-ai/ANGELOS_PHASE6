@@ -20,6 +20,14 @@ export interface ExecuteTaskResult {
   durationMs?: number;
 }
 
+function normalizeTaskId(taskId: string): string {
+  const trimmed = taskId.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 @Injectable()
 export class HermesBuilderExecutor {
   constructor(private readonly aiProvider: AiProviderService) {}
@@ -30,6 +38,7 @@ export class HermesBuilderExecutor {
    */
   async execute(request: ExecuteTaskRequest): Promise<ExecuteTaskResult> {
     const supabase = createServiceSupabaseClient();
+    const taskId = normalizeTaskId(request.taskId);
     const timeoutMs = request.timeoutMs ?? 300000;
     const startTime = Date.now();
 
@@ -37,15 +46,15 @@ export class HermesBuilderExecutor {
     const { data: task, error: fetchError } = await supabase
       .from('hermes_tasks')
       .select('*')
-      .eq('id', request.taskId)
+      .eq('id', taskId)
       .single();
 
     if (fetchError || !task) {
-      return { success: false, taskId: request.taskId, status: 'failed', error: 'Task not found' };
+      return { success: false, taskId, status: 'failed', error: 'Task not found' };
     }
 
     if (!['queued', 'assigned', 'in_progress'].includes(task.status)) {
-      return { success: false, taskId: request.taskId, status: 'failed', error: `Task is in ${task.status} status, cannot execute` };
+      return { success: false, taskId, status: 'failed', error: `Task is in ${task.status} status, cannot execute` };
     }
 
     // Set to building
@@ -55,7 +64,7 @@ export class HermesBuilderExecutor {
       hermes_started_at: now,
       n8n_status: 'building',
       updated_at: now
-    }).eq('id', request.taskId).select().single();
+    }).eq('id', taskId).select().single();
 
     const executionId = request.executionId ?? 'executor-' + Date.now();
 
@@ -71,7 +80,7 @@ export class HermesBuilderExecutor {
         n8n_status: 'done',
         n8n_execution_id: executionId,
         updated_at: finishTime
-      }).eq('id', request.taskId).select().single();
+      }).eq('id', taskId).select().single();
 
       // Fire Telegram callback if one was stored
       if (task.n8n_callback_url && task.source_channel === 'telegram') {
@@ -80,7 +89,7 @@ export class HermesBuilderExecutor {
 
       return {
         success: true,
-        taskId: request.taskId,
+        taskId,
         status: 'done',
         files_changed: result.files_changed,
         summary: result.summary,
@@ -97,13 +106,13 @@ export class HermesBuilderExecutor {
         hermes_finished_at: finishTime,
         n8n_status: 'failed',
         updated_at: finishTime
-      }).eq('id', request.taskId).select().single();
+      }).eq('id', taskId).select().single();
 
       if (task.n8n_callback_url && task.source_channel === 'telegram') {
         this.fireCallback(task.n8n_callback_url, task, {}, errorMsg);
       }
 
-      return { success: false, taskId: request.taskId, status: 'failed', error: errorMsg, durationMs: Date.now() - startTime };
+      return { success: false, taskId, status: 'failed', error: errorMsg, durationMs: Date.now() - startTime };
     }
   }
 
