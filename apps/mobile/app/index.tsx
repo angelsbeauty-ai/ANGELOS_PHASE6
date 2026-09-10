@@ -118,6 +118,16 @@ export default function HomeScreen() {
         </Link>
       </Card>
 
+      <Card premium>
+        <SectionTitle>Hermes / Planner</SectionTitle>
+        <BodyText>Review pending approvals and attention items in one place.</BodyText>
+        <Link href="./hermes" asChild>
+          <Pressable accessibilityRole="link" style={styles.actionLink}>
+            <PrimaryActionLabel>Open Hermes / Planner</PrimaryActionLabel>
+          </Pressable>
+        </Link>
+      </Card>
+
       <Card>
         <SectionTitle>Run Today</SectionTitle>
         <View>
