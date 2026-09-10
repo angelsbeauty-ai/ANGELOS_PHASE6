@@ -10,7 +10,7 @@ export class AiProviderService {
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.OPENAI_MODEL ?? 'gpt-5.6-terra';
+    const model = request.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o';
     if (!apiKey) {
       throw new BadGatewayException('OPENAI_API_KEY is not configured');
     }

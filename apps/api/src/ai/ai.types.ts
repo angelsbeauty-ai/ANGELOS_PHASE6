@@ -36,6 +36,7 @@ export interface AiMessageRow {
 export interface AiProviderRequest {
   instructions: string;
   input: string;
+  model?: string;
   imageUrls?: string[];
 }
 

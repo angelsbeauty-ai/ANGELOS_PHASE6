@@ -1,4 +1,4 @@
-import { Injectable, BadGatewayException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { createServiceSupabaseClient } from '../config/supabase';
 import { AiProviderService } from '../ai/ai-provider.service';
 
@@ -60,7 +60,7 @@ export class HermesBuilderExecutor {
     const executionId = request.executionId ?? 'executor-' + Date.now();
 
     try {
-      const result = await this.executeTask(task, timeoutMs);
+      const result = await this.executeTask(task, timeoutMs, request.model);
 
       // Record success
       const finishTime = new Date().toISOString();
@@ -107,30 +107,27 @@ export class HermesBuilderExecutor {
     }
   }
 
-  private async executeTask(task: any, timeoutMs: number): Promise<{
+  private async executeTask(task: any, timeoutMs: number, model?: string): Promise<{
     files_changed?: string[];
     summary: string;
     test_result?: { status: string; passed: number; failed: number };
     provider?: string;
     model?: string;
   }> {
-    if ((process.env.AI_PROVIDER_MODE ?? 'mock') !== 'openai') {
-      throw new BadGatewayException('Hermes Builder requires AI_PROVIDER_MODE=openai');
-    }
-
     const request = this.aiProvider.generate({
       instructions: [
         'You are Hermes Builder, an AI software-engineering executor.',
-        'Analyze the task and return only valid JSON with this shape:',
+        'Analyze the task and execute it. Return only valid JSON with this shape:',
         '{"summary":"string","files_changed":["relative/path"],"test_result":{"status":"not_run|passed|failed","passed":0,"failed":0}}.',
-        'Do not claim files were changed or tests passed unless the task data explicitly proves it.',
-        'This execution may not modify files or run commands; report proposed changes and tests as not_run.'
+        'Report files_changed only for files you actually modified.',
+        'Set test_result.status to "passed" only if tests ran and passed, "failed" only if tests ran and failed, otherwise "not_run".'
       ].join(' '),
       input: JSON.stringify({
         intent: task.intent,
         task_text: task.task_text,
         task_json: task.task_json ?? null
-      })
+      }),
+      model
     });
     const response = await this.withTimeout(request, timeoutMs);
     const parsed = this.parseBuilderResponse(response.text);
