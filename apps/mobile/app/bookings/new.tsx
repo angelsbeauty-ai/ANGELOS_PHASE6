@@ -168,5 +168,6 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   warningHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: ui.spacing.sm },
+  emptyBlock: { gap: ui.spacing.xs },
   primaryAction: { marginTop: ui.spacing.xs }
 });
