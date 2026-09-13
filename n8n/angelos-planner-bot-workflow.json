@@ -378,10 +378,10 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/tasks",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-staging.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/tasks",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"source_ref\": \"={{ $json.update?.message?.message_id }}\",\n  \"source\": \"telegram\",\n  \"source_channel\": \"telegram\",\n  \"workspaceId\": \"={{ $json.workspaceId || \"2f420624-2422-4fc3-b00a-f697b68a877d\" }}\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"task_text\": \"={{ $json.text }}\",\n  \"task_json\": \"={{ $json.text }}\",\n  \"needs_owner_approval\": false,\n  \"n8n_execution_id\": \"={{ $executionId || $now.strftime('%Y%m%d-%H%M%S') }}\",\n  \"n8n_callback_url\": \"={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/callback\"\n}",
+        "jsonBody": "{\n  \"source_ref\": \"={{ $json.update?.message?.message_id }}\",\n  \"source\": \"telegram\",\n  \"source_channel\": \"telegram\",\n  \"workspaceId\": \"={{ $json.workspaceId || \"2f420624-2422-4fc3-b00a-f697b68a877d\" }}\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"task_text\": \"={{ $json.text }}\",\n  \"task_json\": \"={{ $json.text }}\",\n  \"needs_owner_approval\": false,\n  \"n8n_execution_id\": \"={{ $executionId || $now.strftime('%Y%m%d-%H%M%S') }}\",\n  \"n8n_callback_url\": \"={{ $env.ANGELOS_API_URL || 'https://angelosapi-staging.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/callback\"\n}",
         "options": {
           "response": {
             "response": true
@@ -419,7 +419,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/execute",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-staging.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/execute",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"taskId\": \"={{ $json.taskId }}\",\n  \"model\": \"gpt-4o\",\n  \"timeoutMs\": 300000\n}",
@@ -484,7 +484,7 @@
     {
       "parameters": {
         "httpMethod": "GET",
-        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/overview",
+        "url": "={{ $env.ANGELOS_API_URL || 'https://angelosapi-staging.up.railway.app' }}/workspaces/{{ $json.workspaceId || '2f420624-2422-4fc3-b00a-f697b68a877d' }}/hermes/n8n/overview",
         "options": {
           "response": {
             "response": true
