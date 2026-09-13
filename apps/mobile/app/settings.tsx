@@ -10,7 +10,8 @@ const areas = [
   { href: '/ai-settings', title: 'AI Assistant', detail: 'Personality, roles, proactivity and guidance' },
   { href: '/marketing-profile', title: 'Marketing Profile', detail: 'Goals, ideal client, experience and service area' },
   { href: '/subscription', title: 'Subscription', detail: 'Plan, student discount and account access' },
-  { href: '/system-health', title: 'System Health', detail: 'Connections, Needs Attention and emergency controls' }
+  { href: '/connections', title: 'Connections', detail: 'LINE and Instagram doorway status, connect and disconnect' },
+  { href: '/system-health', title: 'System Health', detail: 'Needs Attention and emergency controls' }
 ] as const;
 
 export default function SettingsScreen() {
