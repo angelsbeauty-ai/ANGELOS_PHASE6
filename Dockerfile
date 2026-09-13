@@ -12,7 +12,8 @@ RUN npx --prefix . nest build
 
 FROM node:22-alpine
 WORKDIR /app
-COPY --from=build /build/node_modules ./node_modules
+# npm install --prefix ./apps/api places modules under /build/apps/api/node_modules
+COPY --from=build /build/apps/api/node_modules ./node_modules
 COPY --from=build /build/apps/api/dist ./dist
 USER node
 EXPOSE 3000
