@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import type { AuthUser } from '../auth/auth-user';
+import type { AuthUser } from '../auth-user';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import { planSafeAssistantAction } from './action-planner';
 import { buildOperatingInstructions } from './angelos-operating-contract';
@@ -10,6 +10,11 @@ import type { CreateMemoryDto } from './dto/create-memory.dto';
 import type { SendAiMessageDto } from './dto/send-ai-message.dto';
 import type { UpdateAssistantProfileDto } from './dto/update-assistant-profile.dto';
 import type { UpdateAssistantRolesDto } from './dto/update-assistant-roles.dto';
+import { SendVoiceMessageDto } from './dto/send-voice-message.dto';
+
+export type SendVoiceResult =
+  | { transcript: string; reply: string }
+  | { error: string; status: number };
 
 @Injectable()
 export class AiService {
@@ -277,7 +282,6 @@ export class AiService {
         throw new Error(`Unsupported action: ${action.action_key}`);
       }
 
-      // Verification is a fresh read after mutation, not an assumption based on the write call.
       const verification = await this.verifyAction(user, workspaceId, action.action_key, action.input);
       if (!verification.verified) {
         throw new Error('Action mutation could not be verified');
@@ -351,6 +355,39 @@ export class AiService {
       .order('created_at', { ascending: false });
     if (error) throw new InternalServerErrorException(error.message);
     return data ?? [];
+  }
+
+  async sendVoice(
+    _user: AuthUser,
+    _workspaceId: string,
+    dto: SendVoiceMessageDto,
+  ): Promise<SendVoiceResult> {
+    try {
+      const base64 = dto.audioBase64.trim();
+      if (!base64 || base64.length < 100) {
+        return { error: 'Audio too short', status: 400 };
+      }
+
+      // STT via Supabase Edge Function (ai-agent-voice) is not deployed yet.
+      // Accept the voice upload so the mobile app can keep talking to Hermes;
+      // the reply tells the user transcription is pending.
+      this.logger.warn(
+        'ai-agent-voice Edge Function is not deployed — transcription pending. ' +
+          `audio bytes received: ${base64.length}`,
+      );
+
+      return {
+        transcript: '',
+        reply:
+          '🎤 Voice received. Transcription is not wired up on the server yet — ' +
+          "the audio was recorded but I couldn't turn it into text. Try typing the " +
+          'treatment / note instead for now, or wait for the voice pipeline to be deployed.',
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Voice endpoint error';
+      this.logger.error(`sendVoice failed: ${message}`);
+      return { error: message, status: 500 };
+    }
   }
 
   private async loadAuthorizedContextFacts(

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { DbMigrationModule } from './db/db-migration.module';
 import { HealthModule } from './health/health.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { AiModule } from './ai/ai.module';
@@ -25,12 +26,19 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { HermesModule } from './hermes/hermes.module';
 
 @Module({
-  imports: [HealthModule, WorkspacesModule, AiModule, ClientsModule, BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule, FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule, FounderModule, ProductAnalyticsModule, BetaModule, ApprovalsModule, HermesModule],
+  imports: [
+    DbMigrationModule,
+    HealthModule, HermesModule, WorkspacesModule, AiModule, ClientsModule,
+    BookingsModule, MessagingModule, MediaModule, ContentModule, AnalyticsModule,
+    FinanceModule, AutomationsModule, SystemHealthModule, SubscriptionsModule,
+    FounderModule, ProductAnalyticsModule, BetaModule, ApprovalsModule,
+    HermesModule,
+  ],
   providers: [
     { provide: APP_GUARD, useClass: EmergencyReadOnlyGuard },
     { provide: APP_GUARD, useClass: SubscriptionAccessGuard },
     { provide: APP_GUARD, useClass: PlatformFeatureGuard },
-    { provide: APP_GUARD, useClass: BetaAccessGuard }
-  ]
+    { provide: APP_GUARD, useClass: BetaAccessGuard },
+  ],
 })
 export class AppModule {}

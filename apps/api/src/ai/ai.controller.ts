@@ -6,6 +6,7 @@ import { AiService } from './ai.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { CreateMemoryDto } from './dto/create-memory.dto';
 import { SendAiMessageDto } from './dto/send-ai-message.dto';
+import { SendVoiceMessageDto } from './dto/send-voice-message.dto';
 import { UpdateAssistantProfileDto } from './dto/update-assistant-profile.dto';
 import { UpdateAssistantRolesDto } from './dto/update-assistant-roles.dto';
 
@@ -65,6 +66,20 @@ export class AiController {
     return this.ai.sendMessage(user, workspaceId, conversationId, dto);
   }
 
+  @Post('memory')
+  proposeMemory(
+    @CurrentUser() user: AuthUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: CreateMemoryDto
+  ) {
+    return this.ai.proposeMemory(user, workspaceId, dto);
+  }
+
+  @Get('memory')
+  listMemory(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) {
+    return this.ai.listMemory(user, workspaceId);
+  }
+
   @Post('actions/:actionId/approve')
   approveAction(
     @CurrentUser() user: AuthUser,
@@ -83,17 +98,12 @@ export class AiController {
     return this.ai.cancelAction(user, workspaceId, actionId);
   }
 
-  @Get('memory')
-  listMemory(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) {
-    return this.ai.listMemory(user, workspaceId);
-  }
-
-  @Post('memory')
-  proposeMemory(
+  @Post('voice')
+  sendVoice(
     @CurrentUser() user: AuthUser,
     @Param('workspaceId') workspaceId: string,
-    @Body() dto: CreateMemoryDto
+    @Body() dto: SendVoiceMessageDto
   ) {
-    return this.ai.proposeMemory(user, workspaceId, dto);
+    return this.ai.sendVoice(user, workspaceId, dto);
   }
 }

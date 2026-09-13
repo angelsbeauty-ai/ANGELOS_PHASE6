@@ -6,7 +6,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
-    "postbuild": "mkdir -p ../dist && cp -r dist/* ../dist/",
+    "postbuild": "node -e \"const fs=require('fs');const path=require('path');const d=path.resolve(__dirname,'../dist');if(!fs.existsSync(d))fs.mkdirSync(d,{recursive:true});const s=path.resolve(__dirname,'dist');fs.readdirSync(s).forEach(f=>{const sf=path.join(s,f);const df=path.join(d,f);if(fs.statSync(sf).isDirectory()){fs.rmSync(df,{recursive:true,force:true});fs.cpSync(sf,df,{recursive:true});}else{fs.copyFileSync(sf,df);}})\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -14,10 +14,11 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
     "@supabase/supabase-js": "^2.57.0",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2"
+    "class-validator": "^0.14.2",
+    "postgres": "^3.4.9",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

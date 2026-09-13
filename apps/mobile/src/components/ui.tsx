@@ -88,7 +88,8 @@ export const ui = {
   colors: palette,
   spacing,
   radius,
-  typography
+  typography,
+  shadow,
 };
 
 const styles = StyleSheet.create({
