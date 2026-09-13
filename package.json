@@ -37,7 +37,8 @@
     "hermes:worker": "node scripts/angelos-hermes-worker.js",
     "staging:verify-workspace": "node scripts/verify-staging-workspace.mjs",
     "staging:verify-founder": "node scripts/verify-staging-founder.mjs",
-    "staging:bootstrap-founder": "node scripts/bootstrap-founder.mjs"
+    "staging:bootstrap-founder": "node scripts/bootstrap-founder.mjs",
+    "staging:seed-baseline": "node scripts/seed-staging-baseline.mjs"
   },
   "engines": {
     "node": ">=22.13.0"
