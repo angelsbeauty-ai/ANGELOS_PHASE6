@@ -7,7 +7,8 @@ COPY apps/api/nest-cli.json ./apps/api/
 COPY apps/api/tsconfig.json ./apps/api/
 COPY apps/api/src ./apps/api/src
 RUN npm install --prefix ./apps/api
-RUN npx --prefix ./apps/api nest build
+WORKDIR /build/apps/api
+RUN npx --prefix . nest build
 
 FROM node:22-alpine
 WORKDIR /app
