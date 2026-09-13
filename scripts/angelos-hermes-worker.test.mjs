@@ -26,7 +26,7 @@ import crypto from 'node:crypto';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const ANGELOS_API_URL = process.env.ANGELOS_API_URL || 'https://angelosapi-production.up.railway.app';
+const ANGELOS_API_URL = process.env.ANGELOS_API_URL || 'https://angelosapi-staging.up.railway.app';
 const WORKSPACE_ID = process.env.ANGELOS_WORKSPACE_ID ||
   '2f420624-2422-4fc3-b00a-f697b68a877d'; // default from n8n workflow
 const POLL_TIMEOUT_MS = Number(process.env.HERMES_TEST_TIMEOUT_MS ?? 60000);
