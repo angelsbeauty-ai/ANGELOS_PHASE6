@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import type { AuthUser } from '../auth-user';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import type { AuthUser } from '../auth/auth-user';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import { planSafeAssistantAction } from './action-planner';
 import { buildOperatingInstructions } from './angelos-operating-contract';
@@ -18,6 +18,8 @@ export type SendVoiceResult =
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
+
   constructor(private readonly provider: AiProviderService) {}
 
   async getProfile(user: AuthUser, workspaceId: string) {
