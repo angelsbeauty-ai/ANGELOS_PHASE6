@@ -66,9 +66,15 @@ export default function ClientsScreen() {
 
       {busy ? <Card><BodyText>Loading clients...</BodyText></Card> : null}
       {!busy && clients.length === 0 ? (
-        <Card>
+        <Card premium>
+          <Pill tone="warning">First client</Pill>
           <BodyText>No clients yet.</BodyText>
-          <SupportText>Add a client manually or let AngelOS create records from future inquiries.</SupportText>
+          <SupportText>Add one real client to unlock bookings and treatment history. AngelOS will not invent people.</SupportText>
+          <Link href="/clients/new" asChild>
+            <Pressable style={styles.addButton}>
+              <PrimaryActionLabel>Add first client</PrimaryActionLabel>
+            </Pressable>
+          </Link>
         </Card>
       ) : null}
       {clients.map((client) => (

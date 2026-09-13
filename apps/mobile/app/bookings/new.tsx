@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import {
   BodyText,
@@ -73,7 +73,16 @@ export default function NewBookingScreen() {
 
     <Card>
       <SectionTitle>Client</SectionTitle>
-      {clients.length === 0 ? <SupportText>Create a client first, then return to booking.</SupportText> : null}
+      {clients.length === 0 ? (
+        <View style={styles.emptyBlock}>
+          <SupportText>Create a client first, then return to booking.</SupportText>
+          <Link href="/clients/new" asChild>
+            <Pressable style={styles.primaryAction}>
+              <SecondaryActionLabel>Add client</SecondaryActionLabel>
+            </Pressable>
+          </Link>
+        </View>
+      ) : null}
       <View style={styles.options}>
         {clients.slice(0, 12).map((client) => (
           <Pressable key={client.id} onPress={() => setClientId(client.id)} style={[styles.option, clientId === client.id && styles.selected]}>
@@ -85,7 +94,16 @@ export default function NewBookingScreen() {
 
     <Card>
       <SectionTitle>Service</SectionTitle>
-      {services.length === 0 ? <SupportText>Create a service from the Services screen first.</SupportText> : null}
+      {services.length === 0 ? (
+        <View style={styles.emptyBlock}>
+          <SupportText>Create a service from the Services screen first.</SupportText>
+          <Link href="/services" asChild>
+            <Pressable style={styles.primaryAction}>
+              <SecondaryActionLabel>Open Services</SecondaryActionLabel>
+            </Pressable>
+          </Link>
+        </View>
+      ) : null}
       <View style={styles.options}>
         {services.map((service) => (
           <Pressable key={service.id} onPress={() => setServiceId(service.id)} style={[styles.option, serviceId === service.id && styles.selected]}>
