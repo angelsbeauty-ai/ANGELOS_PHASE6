@@ -67,8 +67,8 @@ export class DbMigrationService {
             skipped++;
             this.logger.log(`skipped (already exists): ${stmt.substring(0, 80)}`);
           } else {
-            this.logger.warn(`statement error: ${e.message.substring(0, 150)}`);
-            rows.push({ statement: stmt.substring(0, 80) + '...', error: e.message.substring(0, 200) });
+            await client.end().catch(() => {});
+            throw e; // abort migration on non-idempotent error
           }
         }
       }
@@ -228,8 +228,4 @@ export class DbMigrationController {
   }
 }
 
-@Module({
-  controllers: [DbMigrationController],
-  providers: [DbMigrationService],
-})
-export class DbMigrationModule {}
+
