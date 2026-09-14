@@ -23,7 +23,7 @@ export class HermesControlController {
       needs_owner_approval?: boolean; n8n_execution_id?: string; n8n_callback_url?: string
     }
   ) {
-    return this.hermesTask.create(user, body);
+    return this.hermesTask.create(user, body, workspaceId);
   }
 
   @Get('tasks')
@@ -33,7 +33,12 @@ export class HermesControlController {
 
   @Get('tasks/:taskId')
   async getTask(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('taskId') taskId: string) {
-    return this.hermesTask.getOne(user, taskId);
+    return this.hermesTask.getOneForWorkspace(user, taskId, workspaceId);
+  }
+
+  @Get('tasks/:taskId/status')
+  async getTaskStatus(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('taskId') taskId: string) {
+    return this.hermesTask.getCodexTaskStatus(user, taskId, workspaceId);
   }
 
   @Post('tasks/:taskId/approve')

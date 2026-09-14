@@ -48,8 +48,9 @@ export function updateClient(workspaceId: string, clientId: string, input: Recor
 }
 
 export type ConsentType = 'treatment' | 'photo_video' | 'marketing' | 'model_student' | 'policy_acknowledgement';
+export type ConsentStatus = 'granted' | 'denied' | 'withdrawn';
 
-export function recordConsent(workspaceId: string, clientId: string, consentType: ConsentType, status: 'granted' | 'denied' | 'withdrawn') {
+export function recordConsent(workspaceId: string, clientId: string, consentType: ConsentType, status: ConsentStatus) {
   return apiFetch(`/workspaces/${workspaceId}/clients/${clientId}/consents`, {
     method: 'POST',
     body: JSON.stringify({ consentType, status })
