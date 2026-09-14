@@ -19,6 +19,7 @@ import { getCalendar, listBusinessHours, listServices } from '../src/lib/booking
 import { listClients } from '../src/lib/clients';
 import { getSystemHealth, type SystemHealthOverview } from '../src/lib/system-health';
 import { getActiveWorkspace } from '../src/lib/workspace';
+import { getClientControlReviewQueue, getLineConnectionStatus, getMetaConnectionStatus } from '../src/lib/messaging';
 import { supabase } from '../src/lib/supabase';
 
 type SetupSnapshot = {
@@ -27,6 +28,9 @@ type SetupSnapshot = {
   clientCount: number;
   todayAppointments: number;
   workspaceReady: boolean;
+  pendingApprovals: number;
+  lineReady: boolean;
+  instagramReady: boolean;
 };
 
 export default function HomeScreen() {
@@ -66,7 +70,7 @@ export default function HomeScreen() {
       const workspace = await getActiveWorkspace();
       const start = startOfToday();
       const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-      const [healthOverview, services, hours, clients, calendar] = await Promise.all([
+      const [healthOverview, services, hours, clients, calendar, reviewQueue, lineStatus, metaStatus] = await Promise.all([
         getSystemHealth(workspace.id).catch(() => null),
         listServices(workspace.id).catch(() => []),
         listBusinessHours(workspace.id).catch(() => []),
@@ -74,7 +78,10 @@ export default function HomeScreen() {
         getCalendar(workspace.id, start.toISOString(), end.toISOString()).catch(() => ({
           appointments: [],
           blocks: []
-        }))
+        })),
+        getClientControlReviewQueue(workspace.id).catch(() => ({ ok: false, items: [] })),
+        getLineConnectionStatus(workspace.id).catch(() => null),
+        getMetaConnectionStatus(workspace.id).catch(() => null)
       ]);
       setHealth(healthOverview);
       setSetup({
@@ -82,7 +89,18 @@ export default function HomeScreen() {
         hoursCount: hours.length,
         clientCount: clients.length,
         todayAppointments: calendar.appointments.length,
-        workspaceReady: true
+        workspaceReady: true,
+        pendingApprovals: Array.isArray(reviewQueue?.items) ? reviewQueue.items.length : 0,
+        lineReady: Boolean(
+          lineStatus?.connection?.tokenPresent &&
+          lineStatus.connection.status === 'active' &&
+          !lineStatus.connection.expired
+        ),
+        instagramReady: Boolean(
+          (metaStatus?.connections || []).some(
+            (c) => c.provider === 'instagram' && c.tokenPresent && c.status === 'active' && !c.expired
+          )
+        )
       });
     } catch {
       setHealth(null);
@@ -91,7 +109,10 @@ export default function HomeScreen() {
         hoursCount: 0,
         clientCount: 0,
         todayAppointments: 0,
-        workspaceReady: false
+        workspaceReady: false,
+        pendingApprovals: 0,
+        lineReady: false,
+        instagramReady: false
       });
     }
   }
@@ -111,6 +132,8 @@ export default function HomeScreen() {
   const needsServices = Boolean(setup?.workspaceReady && setup.serviceCount === 0);
   const needsHours = Boolean(setup?.workspaceReady && setup.hoursCount < 7);
   const needsClient = Boolean(setup?.workspaceReady && setup.clientCount === 0);
+  const needsConnection = Boolean(setup?.workspaceReady && !setup.lineReady && !setup.instagramReady);
+  const pendingApprovals = setup?.pendingApprovals ?? 0;
   const needsSetup = needsServices || needsHours || needsClient || setup?.workspaceReady === false;
 
   return (
@@ -126,6 +149,12 @@ export default function HomeScreen() {
           label="Appointments"
           value={setup ? String(setup.todayAppointments) : '--'}
           detail={setup ? 'On the calendar today' : 'Loading today...'}
+        />
+
+        <StatCard
+          label="Approvals"
+          value={setup ? String(setup.pendingApprovals) : '--'}
+          detail={setup ? 'Waiting for your decision' : 'Loading approvals...'}
         />
         <StatCard
           label="Attention"
@@ -183,6 +212,19 @@ export default function HomeScreen() {
           </Pressable>
         </Link>
       </Card>
+
+      {needsConnection ? (
+        <Card premium>
+          <Pill tone="warning">Secure doorways</Pill>
+          <SectionTitle>Connect LINE or Instagram</SectionTitle>
+          <SupportText>Home shows real connection status from staging. Meta public publish stays closed. LINE connect does not cut over the live Agent.</SupportText>
+          <Link href="/connections" asChild>
+            <Pressable style={styles.rowLink}>
+              <PrimaryActionLabel>Open Connections</PrimaryActionLabel>
+            </Pressable>
+          </Link>
+        </Card>
+      ) : null}
 
       <Card>
         <SectionTitle>Needs Attention</SectionTitle>
