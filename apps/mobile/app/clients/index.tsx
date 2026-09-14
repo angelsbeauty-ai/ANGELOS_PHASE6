@@ -43,6 +43,13 @@ export default function ClientsScreen() {
           <Pill tone="gold">Client Memory</Pill>
           <ScreenTitle>Clients</ScreenTitle>
           <SupportText>One connected history for every client, inquiry and treatment.</SupportText>
+          {!busy ? (
+            <SupportText>
+              {clients.length === 0
+                ? 'Live from staging: no clients yet — AngelOS will not invent people.'
+                : 'Live from staging: ' + clients.length + ' client' + (clients.length === 1 ? '' : 's')}
+            </SupportText>
+          ) : null}
         </View>
         <Link href="/clients/new" asChild>
           <Pressable style={styles.addButton}>
