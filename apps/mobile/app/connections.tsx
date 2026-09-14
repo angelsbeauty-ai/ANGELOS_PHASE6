@@ -233,6 +233,23 @@ export default function ConnectionsScreen() {
         LINE and Instagram doorways for your workspace. Meta public publish stays closed. Live LINE Agent is not cut over from this screen.
       </SupportText>
 
+      <Card premium>
+        <Pill tone="warning">Staging doorway checklist</Pill>
+        <SectionTitle>What is blocking proof</SectionTitle>
+        <SupportText>
+          LINE server credentials: {line?.channelCredentials.configured ? 'configured' : 'missing on staging API'}
+        </SupportText>
+        <SupportText>
+          Meta/Instagram app credentials: {meta?.appCredentials.configured ? 'configured' : 'missing on staging API'}
+        </SupportText>
+        <SupportText>
+          Workspace tokens: LINE {lineHealthy ? 'stored' : 'not stored'} · Instagram {igHealthy ? 'stored' : 'not stored'}
+        </SupportText>
+        <SupportText>
+          Paste tokens below only when they are meant for AngelOS. This screen will not invent keys and will not cut over live LINE or reopen Meta publish.
+        </SupportText>
+      </Card>
+
       <Pressable disabled={busy || saving} onPress={() => void load()} style={styles.refresh}>
         <SecondaryActionLabel>{busy ? 'Checking...' : 'Refresh status'}</SecondaryActionLabel>
       </Pressable>

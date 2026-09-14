@@ -31,7 +31,13 @@ export default function ContentScreen() {
   return <Screen>
     <View style={styles.header}>
       <View style={styles.headerCopy}><Pill tone="gold">Marketing Studio</Pill><ScreenTitle>Content</ScreenTitle><SupportText>Turn your best business media into one clear next post.</SupportText></View>
-      <Link href="/content/new" asChild><Pressable style={styles.createButton}><PrimaryActionLabel>Create</PrimaryActionLabel></Pressable></Link>
+      {contentUnavailable ? (
+        <Pressable disabled style={[styles.createButton, { opacity: 0.45 }]}>
+          <PrimaryActionLabel>Create disabled</PrimaryActionLabel>
+        </Pressable>
+      ) : (
+        <Link href="/content/new" asChild><Pressable style={styles.createButton}><PrimaryActionLabel>Create</PrimaryActionLabel></Pressable></Link>
+      )}
     </View>
     <Card premium>
       <SectionTitle>Focused recommendations</SectionTitle>

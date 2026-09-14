@@ -163,6 +163,18 @@ export default function HomeScreen() {
         />
       </View>
 
+      <Card premium>
+        <Pill tone="gold">Staging walk</Pill>
+        <SectionTitle>Live counts from staging</SectionTitle>
+        <SupportText>
+          Services: {setup ? String(setup.serviceCount) : '--'} | Hours days: {setup ? String(setup.hoursCount) : '--'} | Clients: {setup ? String(setup.clientCount) : '--'} | Today bookings: {setup ? String(setup.todayAppointments) : '--'}
+        </SupportText>
+        <SupportText>
+          Doorways: LINE {setup?.lineReady ? 'ready' : 'waiting on credentials'} · Instagram {setup?.instagramReady ? 'ready' : 'waiting on credentials'}
+        </SupportText>
+        <SupportText>Meta publish stays closed. Live LINE Agent is not cut over from Connections.</SupportText>
+      </Card>
+
       {needsSetup ? (
         <Card premium>
           <Pill tone="warning">First-run setup</Pill>
