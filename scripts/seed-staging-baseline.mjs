@@ -114,11 +114,14 @@ for (let day = 0; day <= 6; day += 1) {
   });
 }
 
+const existingNames = new Set((existingServices ?? []).map((row) => String(row.name ?? '').toLowerCase()));
+const missingBaseline = baselineServices.filter((s) => !existingNames.has(String(s.name).toLowerCase()));
+
 const plan = {
   workspaceId,
   workspaceName: workspace.name,
   currency,
-  willInsertServices: existingServices.length === 0 ? baselineServices.map((s) => s.name) : [],
+  willInsertServices: missingBaseline.map((s) => s.name),
   willUpsertHours: existingHours.length < 7,
   dryRun
 };
@@ -129,11 +132,11 @@ if (dryRun) {
 }
 
 let insertedServices = [];
-if (existingServices.length === 0) {
+if (missingBaseline.length > 0) {
   insertedServices = await request(`${supabaseUrl}/rest/v1/services`, {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
-    body: JSON.stringify(baselineServices)
+    body: JSON.stringify(missingBaseline)
   });
 }
 
