@@ -98,7 +98,7 @@ export default function HomeScreen() {
         ),
         instagramReady: Boolean(
           (metaStatus?.connections || []).some(
-            (c) => c.provider === 'instagram' && c.tokenPresent && c.status === 'active' && !c.expired
+            (c) => (c.provider === 'instagram' || c.provider === 'meta_instagram') && c.tokenPresent && c.status === 'active' && !c.expired
           )
         )
       });

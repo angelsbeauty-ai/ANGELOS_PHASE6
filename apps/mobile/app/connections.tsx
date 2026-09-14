@@ -77,11 +77,11 @@ export default function ConnectionsScreen() {
   }
 
   const igConnection = useMemo(
-    () => (meta?.connections ?? []).find((row) => row.provider === 'instagram') ?? null,
+    () => (meta?.connections ?? []).find((row) => (row.provider === 'instagram' || row.provider === 'meta_instagram')) ?? null,
     [meta]
   );
   const igChannel = useMemo(
-    () => (meta?.channels ?? []).find((row) => row.provider === 'instagram') ?? null,
+    () => (meta?.channels ?? []).find((row) => (row.provider === 'instagram' || row.provider === 'meta_instagram')) ?? null,
     [meta]
   );
   const igHealthy = Boolean(

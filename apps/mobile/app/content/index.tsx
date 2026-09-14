@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { BodyText, Card, Pill, PrimaryActionLabel, ScreenTitle, SecondaryActionLabel, SectionTitle, SupportText, ui } from '../../src/components/ui';
@@ -9,13 +9,23 @@ import { getActiveWorkspace } from '../../src/lib/workspace';
 export default function ContentScreen() {
   const [posts, setPosts] = useState<ContentPost[]>([]);
   const [busy, setBusy] = useState(true);
+  const [contentUnavailable, setContentUnavailable] = useState<string | null>(null);
   useEffect(() => { void load(); }, []);
 
   async function load() {
     setBusy(true);
-    try { const workspace = await getActiveWorkspace(); setPosts(await listContent(workspace.id)); }
-    catch (error) { Alert.alert('Could not load content', error instanceof Error ? error.message : 'Unknown error'); }
-    finally { setBusy(false); }
+    setContentUnavailable(null);
+    try {
+      const workspace = await getActiveWorkspace();
+      setPosts(await listContent(workspace.id));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setPosts([]);
+      setContentUnavailable(message);
+      // Soft-fail: do not Alert-modal crash the Marketing Studio when the API route is missing on staging.
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <Screen>
@@ -30,7 +40,15 @@ export default function ContentScreen() {
     </Card>
     <View style={styles.sectionHeader}><SectionTitle>Your content</SectionTitle><Pressable onPress={() => void load()} style={styles.refreshButton}><SecondaryActionLabel>Refresh</SecondaryActionLabel></Pressable></View>
     {busy ? <Card><BodyText>Loading content...</BodyText></Card> : null}
-    {!busy && posts.length === 0 ? <Card><SectionTitle>No drafts yet</SectionTitle><SupportText>Start with a business goal and AngelOS will review your eligible media.</SupportText></Card> : null}
+    {!busy && contentUnavailable ? (
+      <Card premium>
+        <Pill tone="warning">Content API unavailable</Pill>
+        <SectionTitle>Marketing Studio paused</SectionTitle>
+        <SupportText>Staging cannot list content yet (route missing or not deployed). Core CRM screens still work. No crash.</SupportText>
+        <SupportText>{contentUnavailable}</SupportText>
+      </Card>
+    ) : null}
+{!busy && !contentUnavailable && posts.length === 0 ? <Card><SectionTitle>No drafts yet</SectionTitle><SupportText>Start with a business goal and AngelOS will review your eligible media.</SupportText></Card> : null}
     {posts.map((post) => <Link key={post.id} href={`/content/${post.id}` as any} asChild><Pressable><Card>
       <View style={styles.postHeader}><Pill tone={post.status === 'published' ? 'success' : post.status === 'failed' ? 'critical' : 'secondary'}>{post.status.replaceAll('_', ' ')}</Pill><SupportText>{post.primary_format}</SupportText></View>
       <Text style={styles.postTitle}>{post.title}</Text><SupportText>{post.objective.replaceAll('_', ' ')}</SupportText>
