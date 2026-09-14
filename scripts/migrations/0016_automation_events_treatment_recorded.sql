@@ -49,8 +49,6 @@ where not exists (
   where ar.workspace_id = ws.id
     and ar.trigger_type = r.trigger_type
     and ar.name = r.name
-)
-on conflict on constraint automation_rules_workspace_trigger_idx
-  do nothing;
+);
 
 commit;
