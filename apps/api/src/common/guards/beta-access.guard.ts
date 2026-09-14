@@ -9,6 +9,12 @@ export class BetaAccessGuard implements CanActivate {
     if (['GET','HEAD','OPTIONS'].includes(method)) return true;
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
+    // Staging write bypass: private-beta gate must not block founder pilot CRM writes on staging.
+    const railwayEnv = String(process.env.RAILWAY_ENVIRONMENT ?? process.env.RAILWAY_ENVIRONMENT_NAME ?? '').toLowerCase();
+    const nodeEnv = String(process.env.NODE_ENV ?? '').toLowerCase();
+    if (railwayEnv === 'staging' || nodeEnv === 'staging' || process.env.STAGING_ALLOW_WRITES === 'true') {
+      return true;
+    }
     // Path only: endsWith() against originalUrl silently stopped matching whenever the request
     // carried a query string.
     const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];

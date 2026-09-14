@@ -76,9 +76,10 @@ export class AutomationsService {
   async handleTreatmentRecorded(user: AuthUser, workspaceId: string, clientId: string, treatmentData: Record<string, unknown>) {
     const supabase = createUserSupabaseClient(user.accessToken);
 
+    const eventId = crypto.randomUUID();
+
     // Audit log entry — best-effort, never fail the request if the table is missing.
     try {
-      const eventId = crypto.randomUUID();
       await supabase
         .from('automation_events')
         .insert({

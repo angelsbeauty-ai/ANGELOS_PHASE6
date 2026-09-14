@@ -15,3 +15,4 @@ COPY --from=build /build/dist ./dist
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
+# watch-trigger: ensure apps/api/** change deploys root Dockerfile fix 2e6df48

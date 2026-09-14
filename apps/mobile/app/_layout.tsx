@@ -15,6 +15,7 @@ export default function RootLayout() {
     }}>
       <Stack.Screen name="index" options={{ title: 'AngelOS' }} />
       <Stack.Screen name="login" options={{ title: 'Sign In' }} />
+      <Stack.Screen name="connections" options={{ title: 'Connections' }} />
       <Stack.Screen name="approvals" options={{ title: 'Approvals' }} />
       <Stack.Screen name="founder-admin" options={{ title: 'Founder' }} />
     </Stack>

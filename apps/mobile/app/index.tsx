@@ -15,14 +15,30 @@ import {
   SupportText,
   ui
 } from '../src/components/ui';
+import { getCalendar, listBusinessHours, listServices } from '../src/lib/bookings';
+import { listClients } from '../src/lib/clients';
 import { getSystemHealth, type SystemHealthOverview } from '../src/lib/system-health';
 import { getActiveWorkspace } from '../src/lib/workspace';
+import { getClientControlReviewQueue, getLineConnectionStatus, getMetaConnectionStatus } from '../src/lib/messaging';
 import { supabase } from '../src/lib/supabase';
+
+type SetupSnapshot = {
+  serviceCount: number;
+  hoursCount: number;
+  clientCount: number;
+  todayAppointments: number;
+  workspaceReady: boolean;
+  pendingApprovals: number;
+  lineReady: boolean;
+  instagramReady: boolean;
+};
 
 export default function HomeScreen() {
   const [health, setHealth] = useState<SystemHealthOverview | null>(null);
+  const [setup, setSetup] = useState<SetupSnapshot | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -31,7 +47,7 @@ export default function HomeScreen() {
       setIsSignedIn(signedIn);
       setSessionReady(true);
       if (signedIn) {
-        void loadHealth();
+        void loadDashboard();
       }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -40,7 +56,7 @@ export default function HomeScreen() {
       setIsSignedIn(signedIn);
       setSessionReady(true);
       if (signedIn) {
-        void loadHealth();
+        void loadDashboard();
       }
     });
     return () => {
@@ -48,17 +64,78 @@ export default function HomeScreen() {
       listener.subscription.unsubscribe();
     };
   }, []);
-  async function loadHealth() {
-    try { const workspace = await getActiveWorkspace(); setHealth(await getSystemHealth(workspace.id)); }
-    catch { setHealth(null); }
+
+  async function loadDashboard() {
+    try {
+      const workspace = await getActiveWorkspace();
+      const start = startOfToday();
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      const [healthOverview, services, hours, clients, calendar, reviewQueue, lineStatus, metaStatus] = await Promise.all([
+        getSystemHealth(workspace.id).catch(() => null),
+        listServices(workspace.id).catch(() => []),
+        listBusinessHours(workspace.id).catch(() => []),
+        listClients(workspace.id).catch(() => []),
+        getCalendar(workspace.id, start.toISOString(), end.toISOString()).catch(() => ({
+          appointments: [],
+          blocks: []
+        })),
+        getClientControlReviewQueue(workspace.id).catch(() => ({ ok: false, items: [] })),
+        getLineConnectionStatus(workspace.id).catch(() => null),
+        getMetaConnectionStatus(workspace.id).catch(() => null)
+      ]);
+      setHealth(healthOverview);
+      setSetup({
+        serviceCount: services.length,
+        hoursCount: hours.length,
+        clientCount: clients.length,
+        todayAppointments: calendar.appointments.length,
+        workspaceReady: true,
+        pendingApprovals: Array.isArray(reviewQueue?.items) ? reviewQueue.items.length : 0,
+        lineReady: Boolean(
+          lineStatus?.connection?.tokenPresent &&
+          lineStatus.connection.status === 'active' &&
+          !lineStatus.connection.expired
+        ),
+        instagramReady: Boolean(
+          (metaStatus?.connections || []).some(
+            (c) => (c.provider === 'instagram' || c.provider === 'meta_instagram') && c.tokenPresent && c.status === 'active' && !c.expired
+          )
+        )
+      });
+    } catch {
+      setHealth(null);
+      setSetup({
+        serviceCount: 0,
+        hoursCount: 0,
+        clientCount: 0,
+        todayAppointments: 0,
+        workspaceReady: false,
+        pendingApprovals: 0,
+        lineReady: false,
+        instagramReady: false
+      });
+    }
   }
+
   if (!sessionReady) {
-    return <Screen><SupportText>Loading AngelOS...</SupportText></Screen>;
+    return (
+      <Screen>
+        <SupportText>Loading AngelOS...</SupportText>
+      </Screen>
+    );
   }
   if (!isSignedIn) {
     return <Redirect href="/login" />;
   }
+
   const attentionCount = health ? health.counts.urgent + health.counts.today + health.counts.later : 0;
+  const needsServices = Boolean(setup?.workspaceReady && setup.serviceCount === 0);
+  const needsHours = Boolean(setup?.workspaceReady && setup.hoursCount < 7);
+  const needsClient = Boolean(setup?.workspaceReady && setup.clientCount === 0);
+  const needsConnection = Boolean(setup?.workspaceReady && !setup.lineReady && !setup.instagramReady);
+  const pendingApprovals = setup?.pendingApprovals ?? 0;
+  const needsSetup = needsServices || needsHours || needsClient || setup?.workspaceReady === false;
+
   return (
     <Screen>
       <View style={styles.hero}>
@@ -68,9 +145,70 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Appointments" value="Today" detail="Review the day before it starts." />
-        <StatCard label="Attention" value={health ? `${attentionCount}` : '--'} detail={health ? 'Items to review' : 'Check workspace health'} />
+        <StatCard
+          label="Appointments"
+          value={setup ? String(setup.todayAppointments) : '--'}
+          detail={setup ? 'On the calendar today' : 'Loading today...'}
+        />
+
+        <StatCard
+          label="Approvals"
+          value={setup ? String(setup.pendingApprovals) : '--'}
+          detail={setup ? 'Waiting for your decision' : 'Loading approvals...'}
+        />
+        <StatCard
+          label="Attention"
+          value={health ? `${attentionCount}` : '--'}
+          detail={health ? 'Items to review' : 'Check workspace health'}
+        />
       </View>
+
+      <Card premium>
+        <Pill tone="gold">Staging walk</Pill>
+        <SectionTitle>Live counts from staging</SectionTitle>
+        <SupportText>
+          Services: {setup ? String(setup.serviceCount) : '--'} | Hours days: {setup ? String(setup.hoursCount) : '--'} | Clients: {setup ? String(setup.clientCount) : '--'} | Today bookings: {setup ? String(setup.todayAppointments) : '--'}
+        </SupportText>
+        <SupportText>
+          Doorways: LINE {setup?.lineReady ? 'ready' : 'waiting on credentials'} · Instagram {setup?.instagramReady ? 'ready' : 'waiting on credentials'}
+        </SupportText>
+        <SupportText>Meta publish stays closed. Live LINE Agent is not cut over from Connections.</SupportText>
+      </Card>
+
+      {needsSetup ? (
+        <Card premium>
+          <Pill tone="warning">First-run setup</Pill>
+          <SectionTitle>Finish your salon basics</SectionTitle>
+          <SupportText>
+            {!setup?.workspaceReady
+              ? 'Create your business workspace first (Onboarding), then add services, hours and one client.'
+              : 'AngelOS needs real services, open hours and at least one client before bookings feel usable.'}
+          </SupportText>
+          {!setup?.workspaceReady ? (
+            <Link href="/onboarding" asChild>
+              <Pressable style={styles.actionLink}>
+                <PrimaryActionLabel>Open onboarding</PrimaryActionLabel>
+              </Pressable>
+            </Link>
+          ) : null}
+          {needsServices || needsHours ? (
+            <Link href="/services" asChild>
+              <Pressable style={styles.actionLink}>
+                <PrimaryActionLabel>
+                  {needsServices ? 'Set up services and hours' : 'Set business hours'}
+                </PrimaryActionLabel>
+              </Pressable>
+            </Link>
+          ) : null}
+          {needsClient ? (
+            <Link href="/clients/new" asChild>
+              <Pressable style={styles.actionLink}>
+                <PrimaryActionLabel>Add your first client</PrimaryActionLabel>
+              </Pressable>
+            </Link>
+          ) : null}
+        </Card>
+      ) : null}
 
       <Card premium>
         <View style={styles.cardHeader}>
@@ -78,7 +216,7 @@ export default function HomeScreen() {
           <Pill>AI ready</Pill>
         </View>
         <BodyText>
-          Ask what needs attention, draft a client reply, prepare content, or review today's schedule.
+          Ask what needs attention, draft a client reply, prepare content, or review today schedule.
         </BodyText>
         <Link href="/ai" asChild>
           <Pressable style={styles.actionLink}>
@@ -86,6 +224,19 @@ export default function HomeScreen() {
           </Pressable>
         </Link>
       </Card>
+
+      {needsConnection ? (
+        <Card premium>
+          <Pill tone="warning">Secure doorways</Pill>
+          <SectionTitle>Connect LINE or Instagram</SectionTitle>
+          <SupportText>Home shows real connection status from staging. Meta public publish stays closed. LINE connect does not cut over the live Agent.</SupportText>
+          <Link href="/connections" asChild>
+            <Pressable style={styles.rowLink}>
+              <PrimaryActionLabel>Open Connections</PrimaryActionLabel>
+            </Pressable>
+          </Link>
+        </Card>
+      ) : null}
 
       <Card>
         <SectionTitle>Needs Attention</SectionTitle>
@@ -139,6 +290,14 @@ export default function HomeScreen() {
               </Row>
             </Pressable>
           </Link>
+          <Link href="/services" asChild>
+            <Pressable style={styles.rowLink}>
+              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
+                <BodyText>Services</BodyText>
+                <SupportText>Timing, prices and open hours</SupportText>
+              </Row>
+            </Pressable>
+          </Link>
           <Link href="/clients" asChild>
             <Pressable style={styles.rowLink}>
               <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
@@ -167,7 +326,7 @@ export default function HomeScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Tools & Controls</SectionTitle>
+        <SectionTitle>Tools and Controls</SectionTitle>
         <View style={styles.moreGrid}>
           <Link href="/media" style={styles.moreLink}>Media</Link>
           <Link href="/analytics" style={styles.moreLink}>Analytics</Link>
@@ -180,6 +339,12 @@ export default function HomeScreen() {
       </Card>
     </Screen>
   );
+}
+
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 const styles = StyleSheet.create({
@@ -197,10 +362,9 @@ const styles = StyleSheet.create({
     gap: ui.spacing.sm
   },
   actionLink: {
-    marginTop: ui.spacing.xs,
+    marginTop: ui.spacing.xs
   },
-  rowLink: {
-  },
+  rowLink: {},
   chevron: {
     color: ui.colors.gold,
     fontSize: 26,
@@ -221,6 +385,6 @@ const styles = StyleSheet.create({
     color: ui.colors.primaryText,
     backgroundColor: ui.colors.elevated,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '700'
   }
 });
