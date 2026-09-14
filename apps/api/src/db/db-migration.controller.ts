@@ -15,15 +15,9 @@ export interface MigrationResult {
 @Injectable()
 export class DbMigrationService {
   private readonly logger = new Logger(DbMigrationService.name);
-  private readonly dbHost: string;
-  private readonly dbPort: number;
-
-  constructor() {
-    const url = process.env.SUPABASE_URL || 'https://hhzegavoyuicclsmrkwf.supabase.co';
-    const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
-    this.dbHost = 'db.' + (match ? match[1] : 'hhzegavoyuicclsmrkwf') + '.supabase.co';
-    this.dbPort = 5432;
-  }
+  public readonly dbHost = 'aws-0-ap-southeast-1.pooler.supabase.com';
+  public readonly dbPort = 6543;
+  public readonly poolerSni = 'hhzegavoyuicclsmrkwf.supabase.co';
 
   async runMigrationFile(filePath: string): Promise<MigrationResult> {
     if (!fs.existsSync(filePath)) {
@@ -31,6 +25,21 @@ export class DbMigrationService {
     }
     const sql = fs.readFileSync(filePath, 'utf-8');
     return this.executeMigration(sql, filePath);
+  }
+
+  // Fallback: if exact path doesn't exist, try glob match NN_NN_*.sql
+  async runMigrationFileGlob(filePath: string): Promise<MigrationResult> {
+    const baseDir = path.dirname(filePath);
+    const baseName = path.basename(filePath, '.sql');
+    if (fs.existsSync(baseDir)) {
+      for (const f of fs.readdirSync(baseDir)) {
+        if (f.startsWith(baseName + '_') && f.endsWith('.sql')) {
+          const sql = fs.readFileSync(path.join(baseDir, f), 'utf-8');
+          return this.executeMigration(sql, path.join(baseDir, f));
+        }
+      }
+    }
+    return { success: false, message: `Migration file not found: ${filePath}` };
   }
 
   async executeMigration(sql: string, sourceName: string = 'inline'): Promise<MigrationResult> {
@@ -42,12 +51,19 @@ export class DbMigrationService {
         database: 'postgres',
         user: 'postgres',
         password: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-        ssl: { rejectUnauthorized: false, servername: this.dbHost },
+        ssl: { rejectUnauthorized: false, servername: this.poolerSni },
         connectionTimeoutMillis: 15000,
       });
 
       await client.connect();
       this.logger.log(`postgres connected: ${this.dbHost}`);
+
+      // Check if this is a pooler connection (pgBouncer) — session-level features like
+      // prepared statements and some SET commands are restricted. Use simple queries only.
+      const isPooler = this.dbPort === 6543 || this.dbHost.includes('pooler');
+      if (isPooler) {
+        this.logger.log('pooler mode: using transaction-per-statement for safety');
+      }
 
       const statements = sql.split(';').filter(s => s.trim().length > 0 && !s.trim().startsWith('--'));
       let executed = 0;
@@ -56,7 +72,9 @@ export class DbMigrationService {
 
       for (const stmt of statements) {
         try {
-          const result = await client.query(stmt);
+          const result = isPooler
+            ? await (async () => { await client.query('BEGIN'); const r = await client.query(stmt); await client.query('COMMIT'); return r; })()
+            : await client.query(stmt);
           executed++;
           rows.push({ statement: stmt.substring(0, 80) + '...', rowCount: result.rowCount || 0 });
           this.logger.log(`executed: ${stmt.substring(0, 80)}`);
@@ -68,7 +86,7 @@ export class DbMigrationService {
             this.logger.log(`skipped (already exists): ${stmt.substring(0, 80)}`);
           } else {
             await client.end().catch(() => {});
-            throw e; // abort migration on non-idempotent error
+            throw e;
           }
         }
       }
@@ -107,12 +125,12 @@ export class DbMigrationController {
     try {
       const { Client } = require('pg');
       const client = new Client({
-        host: this.service['dbHost'] || 'db.hhzegavoyuicclsmrkwf.supabase.co',
-        port: 5432,
+        host: this.service.dbHost,
+        port: this.service.dbPort,
         database: 'postgres',
         user: 'postgres',
         password: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-        ssl: { rejectUnauthorized: false, servername: 'db.hhzegavoyuicclsmrkwf.supabase.co' },
+        ssl: { rejectUnauthorized: false, servername: this.service.poolerSni },
         connectionTimeoutMillis: 10000,
       });
       await client.connect();
@@ -121,8 +139,8 @@ export class DbMigrationController {
       return {
         success: true,
         message: 'connected successfully',
-        host: this.service['dbHost'],
-        port: 5432,
+        host: this.service.dbHost,
+        port: this.service.dbPort,
       };
     } catch (e: unknown) {
       const err = e as Error;
@@ -150,15 +168,40 @@ export class DbMigrationController {
         path.join(process.cwd(), '..', 'supabase', 'migrations', `${body.migrationId}.sql`),
         path.join(process.cwd(), 'apps', 'api', 'supabase', 'migrations', `${body.migrationId}.sql`),
         path.resolve(`supabase/migrations/${body.migrationId}.sql`),
-        `/workspace/supabase/migrations/${body.migrationId}.sql`,
+        '/workspace/supabase/migrations/' + body.migrationId + '.sql',
         path.resolve(`scripts/migrations/${body.migrationId}.sql`),
-        `/workspace/scripts/migrations/${body.migrationId}.sql`,
+        '/workspace/scripts/migrations/' + body.migrationId + '.sql',
+        '/app/supabase/migrations/' + body.migrationId + '.sql',
+        '/app/scripts/migrations/' + body.migrationId + '.sql',
       ];
       for (const p of candidates) {
         if (fs.existsSync(p)) {
           const result = await this.service.runMigrationFile(p);
           results.push(result);
           break;
+        }
+      }
+      // Glob fallback: migrationId "0016" -> match "0016_*.sql"
+      if (results.length === 0) {
+        const migrationDirs = [
+          path.resolve('supabase/migrations'),
+          path.resolve('scripts/migrations'),
+          '/app/supabase/migrations',
+          '/app/scripts/migrations',
+        ];
+        for (const dir of migrationDirs) {
+          if (fs.existsSync(dir)) {
+            for (const f of fs.readdirSync(dir)) {
+              if (f.startsWith(body.migrationId + '_') && f.endsWith('.sql')) {
+                try {
+                  const result = await this.service.runMigrationFile(path.resolve(path.join(dir, f)));
+                  results.push(result);
+                  break;
+                } catch {}
+              }
+            }
+          }
+          if (results.length > 0) break;
         }
       }
       if (results.length === 0) {
@@ -198,7 +241,7 @@ export class DbMigrationController {
       return result;
     }
 
-    // Default: run 0015 (existing behavior)
+    // Default: run 0015
     const candidates = [
       path.join(process.cwd(), 'supabase', 'migrations', '0015_automation_events_log.sql'),
       path.join(process.cwd(), '..', 'supabase', 'migrations', '0015_automation_events_log.sql'),
@@ -227,5 +270,3 @@ export class DbMigrationController {
     return this.runMigrations(body, token);
   }
 }
-
-
