@@ -1,14 +1,14 @@
 # LiveKit voice backend – final setup (Supabase + Node agent)
 
-This repo now has a complete real-time voice pipeline:
+This repo has a complete real-time voice pipeline with multi-turn conversation:
 
 - Supabase Edge Functions for tokens and orchestration.
-- Mobile app that joins LiveKit rooms.
-- Node agent that can speak as Hermes in those rooms.
+- Mobile app that joins LiveKit rooms and sends user speech as data messages.
+- Node agent that speaks as Hermes using OpenAI TTS and replies to each turn.
 
 ## 1. Secrets (Supabase Edge Functions)
 
-In Supabase dashboard → Edge Functions → Secrets, ensure these exist:
+In Supabase dashboard → Edge Functions → Secrets:
 
 - `LIVEKIT_URL` → e.g. `wss://your-project.livekit.cloud`
 - `LIVEKIT_API_KEY` → your LiveKit API key
@@ -78,7 +78,8 @@ Now when the mobile app starts a voice session:
 
 1. It calls `/api/ai/voice/session` → gets a room.
 2. It calls `/voice-agent` → Edge Function tells the Node agent to join that room.
-3. The Node agent joins, says a short hello, and is ready to converse.
+3. The Node agent joins, says a short hello, and listens for `user-speech` data messages.
+4. For each user message, Hermes replies with OpenAI and streams TTS audio into the room.
 
 ## 4. Mobile app
 
@@ -94,10 +95,11 @@ To run the app:
 3. Open Hermes Voice screen.
 4. Tap **Test session** to verify the Edge Function responds.
 5. Tap **Start voice** to join a live room. The screen will show whether the agent joined.
+6. While connected, type what you said in the text box and tap **Send**. Hermes will reply with audio.
 
 ## 5. Next steps (optional enhancements)
 
-- Implement real STT in the Node agent (pipe user audio to Whisper or another STT service).
-- Improve audio publishing in the Node agent so Hermes’ TTS audio is streamed into the room instead of just writing MP3 files.
-- Add conversation memory so Hermes remembers context across turns.
+- Replace the text box with real STT (e.g. device speech-to-text or LiveKit audio transcription).
+- Add conversation memory across sessions (store history in Supabase DB).
 - Add Japanese voice and localization using the existing `language` field.
+- Improve audio quality and streaming (use better TTS voices, adjust sample rates, etc.).
