@@ -60,7 +60,7 @@ export function StatCard({ label, value, detail }: { label: string; value: strin
 export function Pill({ children, tone = 'secondary' }: PropsWithChildren<{ tone?: TextTone }>) {
   return (
     <View style={[styles.pill, tone === 'gold' && styles.goldPill]}>
-      <Text style={[styles.pillText, { color: tone === 'gold' ? palette.primaryText : toneColor(tone) }]}>
+      <Text style={[styles.pillText, { color: tone === 'gold' ? palette.inverseText : toneColor(tone) }]}>
         {children}
       </Text>
     </View>
@@ -151,8 +151,8 @@ const styles = StyleSheet.create({
     backgroundColor: palette.elevated
   },
   goldPill: {
-    backgroundColor: palette.softGold,
-    borderColor: palette.softGold
+    backgroundColor: palette.gold,
+    borderColor: palette.gold
   },
   pillText: {
     fontSize: typography.metadata,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: radius.control,
     backgroundColor: palette.gold,
-    color: palette.primaryText,
+    color: palette.inverseText,
     fontSize: typography.body,
     fontWeight: '700',
     textAlign: 'center',

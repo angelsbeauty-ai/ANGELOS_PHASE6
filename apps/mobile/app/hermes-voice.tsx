@@ -2,13 +2,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../src/components/Screen';
 
 const palette = {
-  background: '#FCFBF8',
-  elevated: '#FFFFFF',
-  primaryText: '#191919',
-  secondaryText: '#6F6A63',
-  border: '#EAE5DD',
-  gold: '#B9975B',
-  critical: '#A45E59',
+  background: '#09090b',
+  elevated: 'rgba(255,255,255,0.08)',
+  primaryText: '#fafafa',
+  secondaryText: '#a1a1aa',
+  border: 'rgba(255,255,255,0.16)',
+  gold: '#ffffff',
+  critical: '#f4f4f5',
 };
 
 const radius = { card: 18 };
