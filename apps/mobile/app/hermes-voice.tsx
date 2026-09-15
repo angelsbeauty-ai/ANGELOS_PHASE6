@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../src/components/Screen';
 
 const palette = {
@@ -35,6 +36,17 @@ export default function HermesVoiceScreen() {
             Native module ExponentAV is not available in this Expo Go build.
             Hermes voice will return in a development build.
           </Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>AngelOS Voice Mode</Text>
+          <Text style={styles.bodyText}>
+            Owner voice skills (hold to talk, communication, marketing, advisor) live in Voice Mode — not in this Hermes screen.
+          </Text>
+          <Link href="/voice" asChild>
+            <Pressable>
+              <Text style={[styles.cardTitle, { color: palette.gold, marginTop: 8 }]}>Open Voice Mode</Text>
+            </Pressable>
+          </Link>
         </View>
       </View>
     </Screen>
