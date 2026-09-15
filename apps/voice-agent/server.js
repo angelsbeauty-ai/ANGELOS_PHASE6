@@ -1,6 +1,6 @@
-// Hermes voice agent HTTP server with real audio streaming and multi-turn conversation.
-// POST /join { "roomName": "..." }
-// Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT (default 8787)
+// Hermes voice agent HTTP server with real audio streaming, multi-turn conversation, and Supabase memory.
+// POST /join { "roomName": "...", "userId?: string" }
+// Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { createServer } from 'http';
 import { AccessToken } from 'livekit-server-sdk';
@@ -8,12 +8,15 @@ import OpenAI from 'openai';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createWriteStream, createReadStream, unlinkSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.LIVEKIT_URL;
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 const openAiKey = process.env.OPENAI_API_KEY;
 const port = Number(process.env.PORT || 8787);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !apiKey || !apiSecret || !openAiKey) {
   console.error('Missing env vars: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY');
@@ -27,6 +30,41 @@ console.log('Hermes voice agent HTTP server starting on port', port);
 
 // Dynamic import for livekit-client (ESM)
 const { Room, createAudioTrack } = await import('livekit-client');
+
+// Supabase client for conversation memory
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+if (!supabase) {
+  console.warn('No Supabase DB configured; conversation memory disabled.');
+}
+
+async function loadHistory(userId) {
+  if (!supabase || !userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('hermes_conversations')
+      .select('role, content')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(20);
+    if (error) throw error;
+    return (data || []).map((r) => ({ role: r.role, content: r.content }));
+  } catch (e) {
+    console.error('Load history error:', e);
+    return [];
+  }
+}
+
+async function saveTurn(userId, userText, assistantText) {
+  if (!supabase || !userId) return;
+  try {
+    await supabase.from('hermes_conversations').insert([
+      { user_id: userId, role: 'user', content: userText },
+      { user_id: userId, role: 'assistant', content: assistantText },
+    ]);
+  } catch (e) {
+    console.error('Save turn error:', e);
+  }
+}
 
 async function speakAndPublish(room, text) {
   console.log('Hermes:', text);
@@ -63,8 +101,8 @@ async function speakAndPublish(room, text) {
   });
 }
 
-async function runAgentInRoom(roomName) {
-  console.log('Starting agent in room:', roomName);
+async function runAgentInRoom(roomName, userId) {
+  console.log('Starting agent in room:', roomName, userId ? `(user: ${userId})` : '');
 
   const grant = { roomJoin: true, room: roomName, canPublish: true, canSubscribe: true, canPublishData: true };
   const token = new AccessToken(apiKey, apiSecret, { identity: 'hermes-agent', name: 'Hermes', ttl: 60 * 5 });
@@ -75,25 +113,25 @@ async function runAgentInRoom(roomName) {
   await room.connect(url, jwt, { autoSubscribe: true });
   console.log('Agent joined room:', roomName);
 
-  const conversationHistory = [
-    { role: 'system', content: HERMES_SYSTEM },
-  ];
+  // Load conversation history from Supabase
+  const history = await loadHistory(userId);
+  const conversationHistory = [{ role: 'system', content: HERMES_SYSTEM }, ...history];
 
   // Initial greeting
   const greeting = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       ...conversationHistory,
-      { role: 'user', content: 'Say a short friendly hello as Hermes, 1 sentence.' },
+      { role: 'user', content: userId ? 'Say a short friendly hello and mention you remember this user.' : 'Say a short friendly hello as Hermes, 1 sentence.' },
     ],
     temperature: 0.3,
-    max_tokens: 40,
+    max_tokens: 60,
   });
   const greetingText = greeting.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
   await speakAndPublish(room, greetingText);
-  conversationHistory.push({ role: 'assistant', content: greetingText });
+  if (userId) await saveTurn(userId, '[session-start]', greetingText);
 
-  // Simulate multi-turn by listening to data messages (client can send text as data)
+  // Listen for user-speech data messages
   room.on('dataReceived', async (data, participant) => {
     try {
       const msg = JSON.parse(new TextDecoder().decode(data));
@@ -107,11 +145,12 @@ async function runAgentInRoom(roomName) {
         model: 'gpt-4o-mini',
         messages: conversationHistory,
         temperature: 0.3,
-        max_tokens: 80,
+        max_tokens: 100,
       });
       const replyText = reply.choices[0]?.message?.content?.trim() || '...';
       conversationHistory.push({ role: 'assistant', content: replyText });
 
+      if (userId) await saveTurn(userId, userText, replyText);
       await speakAndPublish(room, replyText);
     } catch (e) {
       console.error('Data message error:', e);
@@ -137,11 +176,11 @@ createServer(async (req, res) => {
     req.on('data', (chunk) => (body += chunk));
     req.on('end', async () => {
       try {
-        const { roomName } = JSON.parse(body);
+        const { roomName, userId } = JSON.parse(body);
         if (!roomName) throw new Error('Missing roomName');
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ status: 'ok', room: roomName }));
-        await runAgentInRoom(roomName).catch((e) => console.error('Agent error:', e));
+        await runAgentInRoom(roomName, userId).catch((e) => console.error('Agent error:', e));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ error: e?.message || String(e) }));
@@ -154,4 +193,4 @@ createServer(async (req, res) => {
   res.end(JSON.stringify({ error: 'Not found' }));
 }).listen(port);
 
-console.log('Ready. POST /join with { "roomName": "..." } to start an agent.');
+console.log('Ready. POST /join with { "roomName": "...", "userId?: "..." } to start an agent.');
