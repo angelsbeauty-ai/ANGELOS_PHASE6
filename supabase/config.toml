@@ -1,0 +1,5 @@
+[functions.api]
+verify_jwt = false
+
+[functions.voice-agent]
+verify_jwt = false
