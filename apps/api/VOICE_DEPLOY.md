@@ -1,4 +1,4 @@
-# LiveKit voice backend – final setup (Supabase + Node agent + on-device STT + memory)
+# LiveKit voice backend – final setup (Supabase + Node agent + on-device STT + memory + admin)
 
 This repo has a complete real-time voice pipeline:
 
@@ -6,6 +6,7 @@ This repo has a complete real-time voice pipeline:
 - Mobile app with on-device speech-to-text (Japanese by default) and LiveKit voice.
 - Node agent that speaks as Hermes using OpenAI TTS and replies to each turn.
 - Supabase table for conversation memory so Hermes remembers context across sessions.
+- Mobile admin screen to view and clear a user's conversation history.
 
 ## 1. Secrets (Supabase Edge Functions)
 
@@ -94,7 +95,7 @@ Now when the mobile app starts a voice session:
 3. The Node agent joins, loads past conversation history for that user, says a hello, and listens for `user-speech` data messages.
 4. For each user message, Hermes replies with OpenAI, saves the turn to Supabase, and streams TTS audio into the room.
 
-## 5. Mobile app (with on-device speech-to-text)
+## 5. Mobile app (with on-device STT and history admin)
 
 The mobile app already calls the correct Edge Functions:
 
@@ -105,15 +106,16 @@ To run the app:
 
 1. In repo root: `npm install`
 2. `cd apps/mobile && npm start`
-3. Open Hermes Voice screen.
+3. Open Hermes Voice screen (`/hermes-voice`).
 4. Tap **Test session** to verify the Edge Function responds.
 5. Tap **Start voice** to join a live room. The screen will show whether the agent joined.
 6. Tap the **mic** button and speak in Japanese. Your speech is transcribed on-device and sent to Hermes.
 7. Hermes replies with audio in real time and remembers context across sessions.
+8. Tap **History** in the top-right to view and clear conversation history for the demo user.
 
 ## 6. Next steps (optional enhancements)
 
 - Add language toggle (Japanese / English) and different TTS voices.
 - Improve audio quality and streaming (better TTS voices, sample rate tuning).
 - Add wake-word detection or always-listening mode for a more natural feel.
-- Add a simple admin UI to view and clear conversation history per user.
+- Replace the demo userId with real authenticated user IDs from your auth system.
