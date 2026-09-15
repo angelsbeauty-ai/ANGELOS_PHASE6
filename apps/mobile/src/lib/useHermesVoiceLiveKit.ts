@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import * as LiveKit from 'livekit-client';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-backend-url.com/api';
+// Supabase Edge Function URL for live voice
+const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
+const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
 
 export type HermesVoiceSession = {
   serverUrl: string;
@@ -22,7 +24,7 @@ export function useHermesVoiceLiveKit() {
       setIsConnecting(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE}/ai/voice/session`, {
+      const res = await fetch(VOICE_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options || {}),
