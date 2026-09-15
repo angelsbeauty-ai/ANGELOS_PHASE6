@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import { useSpeechToText } from '../src/lib/useSpeechToText';
 import * as LiveKit from 'livekit-client';
+import { useRouter } from 'expo-router';
 
 const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
 const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
 
 export default function HermesVoiceScreen() {
+  const router = useRouter();
   const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
   const { isListening, transcript, error: sttError, startListening, stopListening, setTranscript } = useSpeechToText({ language: 'ja-JP' });
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
@@ -47,7 +49,7 @@ export default function HermesVoiceScreen() {
       if (room) {
         await endSession();
       } else {
-        await startSession({ language: 'auto', displayName: 'AngelOs user' });
+        await startSession({ userId: 'demo-user-1', language: 'auto', displayName: 'AngelOs user' });
       }
     } catch (e: any) {
       console.error(e);
@@ -86,7 +88,12 @@ export default function HermesVoiceScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Hermes Voice</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Hermes Voice</Text>
+        <TouchableOpacity onPress={() => router.push('/hermes-history')}>
+          <Text style={styles.historyLink}>History</Text>
+        </TouchableOpacity>
+      </View>
 
       {isConnecting && (
         <View style={styles.row}>
@@ -186,7 +193,9 @@ export default function HermesVoiceScreen() {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: '700' },
+  historyLink: { fontSize: 14, color: '#0066cc', fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   statusText: { fontSize: 16, marginLeft: 8 },
   muted: { fontSize: 12, color: '#666', marginLeft: 8 },
