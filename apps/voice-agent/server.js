@@ -1,4 +1,4 @@
-// Hermes voice agent HTTP server with real audio streaming into LiveKit room.
+// Hermes voice agent HTTP server with real audio streaming and multi-turn conversation.
 // POST /join { "roomName": "..." }
 // Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT (default 8787)
 
@@ -26,12 +26,11 @@ const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in 
 console.log('Hermes voice agent HTTP server starting on port', port);
 
 // Dynamic import for livekit-client (ESM)
-const { Room, createAudioTrack, AudioPresets } = await import('livekit-client');
+const { Room, createAudioTrack } = await import('livekit-client');
 
 async function speakAndPublish(room, text) {
   console.log('Hermes:', text);
 
-  // Get TTS audio as stream
   const tts = await openai.audio.speech.create({
     model: 'tts-1',
     voice: 'alloy',
@@ -48,12 +47,11 @@ async function speakAndPublish(room, text) {
   writer.end();
   await new Promise((res) => writer.on('finish', res));
 
-  // Read PCM and publish as audio track
   const audioStream = createReadStream(file, { highWaterMark: 16384 });
   const audioTrack = createAudioTrack(
     'hermes-audio',
     audioStream,
-    { source: 'microphone', sampleRate: 24000, channelCount: 1 } // LiveKit default
+    { source: 'microphone', sampleRate: 24000, channelCount: 1 }
   );
 
   await room.localParticipant.publishTrack(audioTrack, { name: 'hermes-speech' });
@@ -77,18 +75,48 @@ async function runAgentInRoom(roomName) {
   await room.connect(url, jwt, { autoSubscribe: true });
   console.log('Agent joined room:', roomName);
 
+  const conversationHistory = [
+    { role: 'system', content: HERMES_SYSTEM },
+  ];
+
   // Initial greeting
   const greeting = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'system', content: HERMES_SYSTEM },
+      ...conversationHistory,
       { role: 'user', content: 'Say a short friendly hello as Hermes, 1 sentence.' },
     ],
     temperature: 0.3,
     max_tokens: 40,
   });
-  const text = greeting.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
-  await speakAndPublish(room, text);
+  const greetingText = greeting.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
+  await speakAndPublish(room, greetingText);
+  conversationHistory.push({ role: 'assistant', content: greetingText });
+
+  // Simulate multi-turn by listening to data messages (client can send text as data)
+  room.on('dataReceived', async (data, participant) => {
+    try {
+      const msg = JSON.parse(new TextDecoder().decode(data));
+      if (msg.type !== 'user-speech' || !msg.text) return;
+
+      const userText = msg.text;
+      console.log('User (via data):', userText);
+      conversationHistory.push({ role: 'user', content: userText });
+
+      const reply = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: conversationHistory,
+        temperature: 0.3,
+        max_tokens: 80,
+      });
+      const replyText = reply.choices[0]?.message?.content?.trim() || '...';
+      conversationHistory.push({ role: 'assistant', content: replyText });
+
+      await speakAndPublish(room, replyText);
+    } catch (e) {
+      console.error('Data message error:', e);
+    }
+  });
 
   // Keep agent alive for a few minutes, then leave
   setTimeout(async () => {
