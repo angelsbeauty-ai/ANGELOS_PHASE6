@@ -1,9 +1,9 @@
-# LiveKit voice backend – final setup (Supabase + Node agent)
+# LiveKit voice backend – final setup (Supabase + Node agent + on-device STT)
 
-This repo has a complete real-time voice pipeline with multi-turn conversation:
+This repo has a complete real-time voice pipeline:
 
 - Supabase Edge Functions for tokens and orchestration.
-- Mobile app that joins LiveKit rooms and sends user speech as data messages.
+- Mobile app with on-device speech-to-text (Japanese by default) and LiveKit voice.
 - Node agent that speaks as Hermes using OpenAI TTS and replies to each turn.
 
 ## 1. Secrets (Supabase Edge Functions)
@@ -81,7 +81,7 @@ Now when the mobile app starts a voice session:
 3. The Node agent joins, says a short hello, and listens for `user-speech` data messages.
 4. For each user message, Hermes replies with OpenAI and streams TTS audio into the room.
 
-## 4. Mobile app
+## 4. Mobile app (with on-device speech-to-text)
 
 The mobile app already calls the correct Edge Functions:
 
@@ -95,11 +95,12 @@ To run the app:
 3. Open Hermes Voice screen.
 4. Tap **Test session** to verify the Edge Function responds.
 5. Tap **Start voice** to join a live room. The screen will show whether the agent joined.
-6. While connected, type what you said in the text box and tap **Send**. Hermes will reply with audio.
+6. Tap the **mic** button and speak in Japanese. Your speech is transcribed on-device and sent to Hermes.
+7. Hermes replies with audio in real time.
 
 ## 5. Next steps (optional enhancements)
 
-- Replace the text box with real STT (e.g. device speech-to-text or LiveKit audio transcription).
 - Add conversation memory across sessions (store history in Supabase DB).
-- Add Japanese voice and localization using the existing `language` field.
-- Improve audio quality and streaming (use better TTS voices, adjust sample rates, etc.).
+- Add language toggle (Japanese / English) and different TTS voices.
+- Improve audio quality and streaming (better TTS voices, sample rate tuning).
+- Add wake-word detection or always-listening mode for a more natural feel.
