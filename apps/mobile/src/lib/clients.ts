@@ -70,3 +70,14 @@ export function addTreatment(workspaceId: string, clientId: string, input: Recor
     body: JSON.stringify(input)
   });
 }
+
+export function addFollowup(
+  workspaceId: string,
+  clientId: string,
+  input: { reason: string; dueAt?: string; status?: string }
+) {
+  return apiFetch(`/workspaces/${workspaceId}/clients/${clientId}/followups`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
