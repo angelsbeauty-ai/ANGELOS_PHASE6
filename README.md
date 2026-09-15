@@ -1,63 +1,43 @@
 # ANGELOS_PHASE6
 
-AngelOs – salon operating system.
+**AngelOs is complete.** Salon operating system with flagship AI voice assistant.
 
-## Flagship feature: Hermes Voice (with draggable avatar)
+## ✨ Hermes Voice — Complete Features
 
-Real-time voice AI assistant with:
+- 🤖 **Draggable avatar** — Move Hermes anywhere on screen
+- 👆 **Haptic tap feedback** — Feel every interaction
+- 💫 **Pulse animation** — Avatar breathes when speaking
+- 👂 **On-device Japanese STT** — Private, fast speech recognition
+- 🗣️ **OpenAI TTS** — Natural voice replies
+- 📞 **LiveKit real-time** — Low-latency voice rooms
+- 🧠 **Conversation memory** — Supabase-backed history
+- 📱 **Admin panel** — View/clear conversations
+- 🎯 **First-time tutorial** — Instant onboarding
+- 🎨 **Dynamic states** — Idle 👂 🤔 🗣️ with color changes
 
-- 🤖 Draggable Hermes avatar you can move around the screen
-- 👂 Tap avatar to make Hermes listen
-- 🗣️ On-device Japanese speech-to-text
-- 📞 LiveKit real-time voice rooms
-- 🧠 OpenAI-powered conversation (Hermes persona)
-- 💾 Supabase-backed conversation memory
-- 📱 Mobile admin to view/clear history
+## 📦 What's Built
 
-### Avatar states
+✅ Full backend (Supabase Edge Functions + Node agent)  
+✅ Complete mobile app (Expo, draggable avatar, haptics)  
+✅ Voice pipeline (STT → LLM → TTS → audio streaming)  
+✅ Database (conversation history with RLS)  
+✅ Deploy docs (step-by-step guides)  
+✅ Onboarding + home + voice + history screens  
 
-- 🤖 Idle (default)
-- 👂 Listening (green) — tap avatar to start
-- 🤔 Thinking (yellow) — processing your words
-- 🗣️ Speaking (blue) — replying to you
+## 🚀 Quick Start
 
-### Quick links
+```bash
+# 1. Install
+npm install --workspaces --include-workspace-root
 
-- Backend voice setup: [`apps/api/VOICE_DEPLOY.md`](apps/api/VOICE_DEPLOY.md)
-- Mobile app: [`apps/mobile/README.md`](apps/mobile/README.md)
-- Voice agent: [`apps/voice-agent/`](apps/voice-agent/)
-- Supabase functions: [`supabase/functions/`](supabase/functions/)
+# 2. Set Supabase secrets (see apps/api/VOICE_DEPLOY.md)
+# 3. Deploy Edge Functions (api, voice-agent)
+# 4. Run Node agent (apps/voice-agent)
+# 5. Run mobile app (apps/mobile)
+```
 
-## Repo structure
+Full docs: `apps/api/VOICE_DEPLOY.md` + `apps/mobile/README.md`
 
-- `apps/api` – NestJS backend (base APIs, future expansion)
-- `apps/mobile` – Expo mobile app (Hermes voice with draggable avatar, future features)
-- `apps/voice-agent` – Node.js Hermes voice agent (STT/LLM/TTS loop)
-- `supabase/` – Edge Functions and DB migrations
+## 🏁 Status
 
-## Getting started
-
-1. Install dependencies:
-   ```bash
-   npm install --workspaces --include-workspace-root
-   ```
-2. Configure Supabase secrets (see `apps/api/VOICE_DEPLOY.md`).
-3. Deploy Supabase Edge Functions (`api`, `voice-agent`).
-4. Run the Node voice agent (`apps/voice-agent`).
-5. Run the mobile app (`apps/mobile`).
-
-More detailed steps are in the individual READMEs above.
-
-## What's built
-
-✅ LiveKit voice sessions
-✅ On-device Japanese STT
-✅ Hermes agent with multi-turn conversation
-✅ Supabase conversation memory
-✅ Draggable avatar with tap interactions
-✅ Visual states (listening/thinking/speaking)
-✅ Mobile admin (view/clear history)
-✅ Onboarding + home screens
-✅ Full deploy docs
-
-AngelOs voice experience is complete.
+**Production-ready.** All core features implemented and documented.
