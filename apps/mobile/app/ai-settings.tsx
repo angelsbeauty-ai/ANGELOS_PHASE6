@@ -1,32 +1,103 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { Screen } from '../src/components/Screen';
-import { BodyText, Card, Pill, ScreenTitle, SectionTitle, SupportText, ui } from '../src/components/ui';
-import { getAssistantProfile, updateAssistantProfile, updateAssistantRoles, type AssistantProfile, type AssistantRole, type AssistantRoleKey } from '../src/lib/ai';
-import { getActiveWorkspace } from '../src/lib/workspace';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ROLE_COPY: Array<{ key: AssistantRoleKey; label: string; description: string }> = [
-  { key:'personal_assistant', label:'Personal Assistant', description:'Organizes your day, priorities and everyday work.' }, { key:'social_media_marketer', label:'Social Media Marketer', description:'Guides growth strategy and posting decisions.' },
-  { key:'content_creator', label:'Content Creator', description:'Creates posts, Reels, Stories, hooks and captions.' }, { key:'business_manager', label:'Business Manager', description:'Helps with operations, clients and Needs Attention.' },
-  { key:'business_advisor', label:'Business Advisor', description:'Recommends practical priorities, offers and growth moves.' }, { key:'consultant', label:'Consultant', description:'Helps think through deeper business tradeoffs.' }
-];
-export default function AiSettingsScreen() {
-  const [workspaceId,setWorkspaceId]=useState<string|null>(null); const [profile,setProfile]=useState<AssistantProfile|null>(null); const [roles,setRoles]=useState<AssistantRole[]>([]); const [busy,setBusy]=useState(true);
-  useEffect(()=>{void load();},[]);
-  async function load(){try{const workspace=await getActiveWorkspace();const data=await getAssistantProfile(workspace.id);setWorkspaceId(workspace.id);setProfile(data.profile);setRoles(data.roles);}catch(error){Alert.alert('Could not load AI settings',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
-  const roleMap=useMemo(()=>new Map(roles.map((role)=>[role.role_key,role.enabled])),[roles]);
-  async function saveProfile(patch:Record<string,unknown>){if(!workspaceId||!profile)return;setBusy(true);try{setProfile(await updateAssistantProfile(workspaceId,patch));}catch(error){Alert.alert('Could not save AI setting',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
-  async function toggleRole(key:AssistantRoleKey,enabled:boolean){if(!workspaceId)return;setBusy(true);try{setRoles((await updateAssistantRoles(workspaceId,{[key]:enabled})).roles);}catch(error){Alert.alert('Could not update AI role',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
-  if(!profile)return <Screen><Card><BodyText>{busy?'Loading AI settings...':'AI settings are unavailable.'}</BodyText></Card></Screen>;
-  return <Screen>
-    <Pill tone="gold">Your Business Partner</Pill><ScreenTitle>AI Assistant</ScreenTitle><SupportText>Choose how AngelOS communicates and which roles it actively uses.</SupportText>
-    <Card premium><SectionTitle>Assistant profile</SectionTitle><Text style={styles.label}>Name</Text><TextInput defaultValue={profile.display_name} placeholder="Assistant name" placeholderTextColor={ui.colors.secondaryText} style={styles.input} onEndEditing={(event)=>void saveProfile({displayName:event.nativeEvent.text})}/><Text style={styles.label}>Personality</Text><TextInput defaultValue={profile.personality_prompt} placeholder="Warm, calm, concise and practical." placeholderTextColor={ui.colors.secondaryText} multiline style={[styles.input,styles.multiline]} onEndEditing={(event)=>void saveProfile({personalityPrompt:event.nativeEvent.text})}/></Card>
-    <Card><SectionTitle>How much should AngelOS lead?</SectionTitle><SupportText>Balanced keeps guidance proactive while leaving important decisions with you.</SupportText><View style={styles.segmentRow}>{(['low','balanced','high'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({proactivity:value})} style={[styles.segment,profile.proactivity===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
-    <Card><SectionTitle>Active roles</SectionTitle>{ROLE_COPY.map((role)=><View key={role.key} style={styles.toggleRow}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>{role.label}</Text><SupportText>{role.description}</SupportText></View><Switch trackColor={{false:ui.colors.border,true:ui.colors.softGold}} thumbColor={(roleMap.get(role.key)??true)?ui.colors.gold:ui.colors.secondaryText} value={roleMap.get(role.key)??true} disabled={busy} onValueChange={(value)=>void toggleRole(role.key,value)}/></View>)}</Card>
-    <Card><SectionTitle>Everyday guidance</SectionTitle><Toggle label="Ask useful follow-up questions" detail="Guides you one step at a time when the next question matters." value={profile.guidance_questions_enabled} onChange={(value)=>void saveProfile({guidanceQuestionsEnabled:value})}/><Toggle label="Explain recommendations" detail="Briefly explains why and what evidence was used." value={profile.explain_recommendations} onChange={(value)=>void saveProfile({explainRecommendations:value})}/></Card>
-    <Card><SectionTitle>Floating AI button</SectionTitle><SupportText>Keep it small, compact or hidden from navigation.</SupportText><View style={styles.segmentRow}>{(['on','compact','off'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({floatingButtonMode:value})} style={[styles.segment,profile.floating_button_mode===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
-  </Screen>;
+export default function AISettingsScreen() {
+  const router = useRouter();
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [autoSuggestions, setAutoSuggestions] = useState(true);
+  const [voiceMode, setVoiceMode] = useState('hermes');
+
+  const handleSave = async () => {
+    try {
+      await AsyncStorage.multiSet([
+        ['ai_enabled', String(aiEnabled)],
+        ['ai_auto_suggestions', String(autoSuggestions)],
+        ['ai_voice_mode', voiceMode],
+      ]);
+      alert('Settings saved!');
+    } catch (error) {
+      console.error('Save error:', error);
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backButton}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>AI Settings</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>AI Assistant</Text>
+        
+        <View style={styles.toggleRow}>
+          <Text style={styles.label}>Enable AI</Text>
+          <Switch value={aiEnabled} onValueChange={setAiEnabled} trackColor={{ false: '#334155', true: '#0ea5e9' }} />
+        </View>
+
+        <View style={styles.toggleRow}>
+          <Text style={styles.label}>Auto Suggestions</Text>
+          <Switch value={autoSuggestions} onValueChange={setAutoSuggestions} trackColor={{ false: '#334155', true: '#0ea5e9' }} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Voice Mode</Text>
+        
+        <TouchableOpacity
+          style={[styles.option, voiceMode === 'hermes' && styles.optionActive]}
+          onPress={() => setVoiceMode('hermes')}
+        >
+          <Text style={[styles.optionText, voiceMode === 'hermes' && styles.optionTextActive]}>Hermes (Local)</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.option, voiceMode === 'cloud' && styles.optionActive]}
+          onPress={() => setVoiceMode('cloud')}
+        >
+          <Text style={[styles.optionText, voiceMode === 'cloud' && styles.optionTextActive]}>Cloud AI</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.infoText}>
+          AngelOs uses AI to help with:
+        </Text>
+        <Text style={styles.bulletText}>• Booking appointments</Text>
+        <Text style={styles.bulletText}>• Client messaging</Text>
+        <Text style={styles.bulletText}>• Content creation</Text>
+        <Text style={styles.bulletText}>• Business insights</Text>
+      </View>
+
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>Save Settings</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
 }
-function Toggle({label,detail,value,onChange}:{label:string;detail:string;value:boolean;onChange:(value:boolean)=>void}){return <View style={styles.toggleRow}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>{label}</Text><SupportText>{detail}</SupportText></View><Switch trackColor={{false:ui.colors.border,true:ui.colors.softGold}} thumbColor={value?ui.colors.gold:ui.colors.secondaryText} value={value} onValueChange={onChange}/></View>}
-function capitalize(value:string){return value[0].toUpperCase()+value.slice(1)}
-const styles=StyleSheet.create({label:{color:ui.colors.secondaryText,fontSize:13,fontWeight:'700'},input:{borderWidth:1,borderColor:ui.colors.border,borderRadius:ui.radius.control,backgroundColor:ui.colors.elevated,color:ui.colors.primaryText,padding:ui.spacing.sm,fontSize:16},multiline:{minHeight:96,textAlignVertical:'top'},segmentRow:{flexDirection:'row',gap:ui.spacing.xs},segment:{flex:1,borderWidth:1,borderColor:ui.colors.border,borderRadius:ui.radius.control,paddingVertical:12,alignItems:'center',backgroundColor:ui.colors.elevated},selected:{borderColor:ui.colors.gold,backgroundColor:ui.colors.softGold},segmentText:{color:ui.colors.primaryText,fontSize:14,fontWeight:'700'},toggleRow:{flexDirection:'row',gap:ui.spacing.sm,alignItems:'center',paddingVertical:ui.spacing.xs,borderBottomWidth:1,borderBottomColor:ui.colors.border},toggleCopy:{flex:1,gap:2},toggleTitle:{color:ui.colors.primaryText,fontSize:16,fontWeight:'700'}});
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
+  backButton: { fontSize: 28, color: '#f1f5f9' },
+  title: { fontSize: 22, fontWeight: '600', color: '#f1f5f9' },
+  placeholder: { width: 28 },
+  section: { padding: 16, marginTop: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: '600', color: '#94a3b8', marginBottom: 16 },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
+  label: { fontSize: 15, color: '#f1f5f9' },
+  option: { backgroundColor: '#1e293b', padding: 16, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
+  optionActive: { backgroundColor: '#0ea5e9', borderColor: '#0ea5e9' },
+  optionText: { fontSize: 15, color: '#f1f5f9' },
+  optionTextActive: { color: '#fff', fontWeight: '600' },
+  infoText: { fontSize: 14, color: '#94a3b8', marginBottom: 8 },
+  bulletText: { fontSize: 14, color: '#f1f5f9', marginBottom: 6, marginLeft: 8 },
+  saveButton: { backgroundColor: '#0ea5e9', margin: 16, padding: 16, borderRadius: 12, alignItems: 'center' },
+  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
