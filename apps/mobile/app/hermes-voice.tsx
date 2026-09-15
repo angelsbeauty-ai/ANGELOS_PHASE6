@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
 const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
 
 export default function HermesVoiceScreen() {
-  const { room, isConnecting, error, startSession, endSession } = useHermesVoiceLiveKit();
+  const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
   const [testResult, setTestResult] = useState<any | null>(null);
   const [testing, setTesting] = useState(false);
@@ -78,6 +78,18 @@ export default function HermesVoiceScreen() {
         </View>
       )}
 
+      {status === 'connected' && agentJoined && (
+        <View style={styles.row}>
+          <Text style={styles.ok}>Hermes agent in the room</Text>
+        </View>
+      )}
+
+      {status === 'connected' && !agentJoined && (
+        <View style={styles.row}>
+          <Text style={styles.muted}>Agent not joined (still ok for now)</Text>
+        </View>
+      )}
+
       {status === 'error' && error && (
         <Text style={styles.error}>{error}</Text>
       )}
@@ -131,6 +143,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 16, marginLeft: 8 },
   muted: { fontSize: 12, color: '#666', marginLeft: 8 },
   error: { color: '#d33', marginBottom: 12 },
+  ok: { color: '#0a0', marginLeft: 8 },
   button: {
     backgroundColor: '#000',
     paddingHorizontal: 20,
@@ -149,5 +162,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   resultTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  ok: { color: '#0a0', marginBottom: 4 },
 });
