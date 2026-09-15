@@ -1,32 +1,65 @@
-# LiveKit voice backend – minimal deploy notes
+# LiveKit voice backend – final setup (Supabase Edge Functions)
 
-This API supports real-time voice via LiveKit. The code is already in `src/voice`.
+This repo now uses Supabase Edge Functions for real-time voice with LiveKit.
 
-## Required server environment variables
+## 1. Secrets (already done)
 
-Set these on your backend host (Render, Railway, Fly, etc.), NOT in GitHub:
+In Supabase dashboard → Edge Functions → Secrets, ensure these four secrets exist:
 
 - `LIVEKIT_URL` → e.g. `wss://your-project.livekit.cloud`
 - `LIVEKIT_API_KEY` → your LiveKit API key
 - `LIVEKIT_API_SECRET` → your LiveKit API secret
-- `LIVEKIT_TOKEN_TTL_SECONDS` → `900` (optional, default 15 minutes)
+- `LIVEKIT_TOKEN_TTL_SECONDS` → `900` (optional)
 
-## After setting env vars
+## 2. Deploy Edge Functions
 
-1. Ensure dependencies are installed: `npm install` (in `apps/api` or workspace root).
-2. Rebuild: `npm run build` (in `apps/api`).
-3. Restart/redeploy the backend service.
+Deploy two functions from `supabase/functions`:
 
-## Test
+### a) Voice session token endpoint
 
-```bash
-curl -X POST https://YOUR_BACKEND_URL/api/ai/voice/session \
-  -H "Content-Type: application/json" \
-  -d '{"language":"auto"}'
+- Path: `supabase/functions/api`
+- In Supabase: Edge Functions → Functions → Deploy a new function → Via Editor
+- Name: `api`
+- Paste `supabase/functions/api/index.ts` as the entire function code.
+- Save & Deploy.
+
+This exposes:
+
+```text
+POST https://<project-ref>.supabase.co/functions/v1/api/ai/voice/session
 ```
 
-Expected response includes `serverUrl`, `token`, `roomName`, `participantIdentity`, `expiresInSeconds`.
+which returns a temporary LiveKit room token.
 
-## Expo / mobile
+### b) Voice agent scaffold (optional, for future)
 
-The mobile app will call `POST /api/ai/voice/session` and use the returned token to join a LiveKit room for real-time voice with the Hermes agent.
+- Path: `supabase/functions/voice-agent`
+- Name: `voice-agent`
+- Paste `supabase/functions/voice-agent/index.ts`.
+- Save & Deploy.
+
+This is a placeholder to later add a speaking Hermes agent inside LiveKit rooms.
+
+## 3. Mobile app
+
+The mobile app already calls the correct Edge Function URL:
+
+```text
+https://hhzegavoyuicclsmrkwf.supabase.co/functions/v1/api/ai/voice/session
+```
+
+To run the app:
+
+1. In repo root: `npm install`
+2. `cd apps/mobile && npm start`
+3. Open Hermes Voice screen.
+4. Tap **Test session** to verify the Edge Function responds.
+5. Tap **Start voice** to join a live room.
+
+## 4. Next steps (optional)
+
+Extend `supabase/functions/voice-agent` to:
+
+- Join the room created by the session endpoint.
+- Use an AI provider (OpenAI, etc.) with TTS/STT.
+- Speak as Hermes using the existing `HERMES_VOICE_INSTRUCTION` prompt.
