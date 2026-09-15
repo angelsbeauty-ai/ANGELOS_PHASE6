@@ -114,7 +114,7 @@ export default function HermesVoiceScreen() {
       case 'listening': return '#0a0';
       case 'thinking': return '#aa0';
       case 'speaking': return '#00a';
-      default: return '#333';
+      default: return '#2a2a2a';
     }
   };
 
@@ -199,15 +199,15 @@ export default function HermesVoiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: '#121212' },
   tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
-  tutorialBox: { backgroundColor: '#111', padding: 28, borderRadius: 20, maxWidth: 320, borderWidth: 2, borderColor: '#333' },
+  tutorialBox: { backgroundColor: '#1e1e1e', padding: 28, borderRadius: 20, maxWidth: 320, borderWidth: 1, borderColor: '#333' },
   tutorialTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 16, textAlign: 'center' },
-  tutorialText: { fontSize: 15, color: '#aaa', marginBottom: 10, textAlign: 'center' },
+  tutorialText: { fontSize: 15, color: '#ccc', marginBottom: 10, textAlign: 'center' },
   tutorialButton: { backgroundColor: '#0a0', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
   tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
   avatarContainer: { position: 'absolute', zIndex: 1000 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.3, shadowRadius: 6, elevation: 6 },
   avatarEmoji: { fontSize: 32 },
   avatarLabel: { color: '#fff', fontSize: 10, fontWeight: '700', marginTop: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
@@ -219,10 +219,10 @@ const styles = StyleSheet.create({
   muted: { fontSize: 14, color: '#666' },
   ok: { color: '#0f0', fontSize: 15, fontWeight: '600' },
   controls: { padding: 16 },
-  button: { backgroundColor: '#222', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12 },
+  button: { backgroundColor: '#1e1e1e', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12, borderWidth: 1, borderColor: '#333' },
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   speechSection: { flex: 1, padding: 16 },
-  transcriptBox: { padding: 16, backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#222' },
-  transcriptLabel: { fontSize: 12, color: '#666', marginBottom: 6 },
+  transcriptBox: { padding: 16, backgroundColor: '#1e1e1e', borderRadius: 12, borderWidth: 1, borderColor: '#333' },
+  transcriptLabel: { fontSize: 12, color: '#888', marginBottom: 6 },
   transcript: { fontSize: 15, color: '#fff' },
 });

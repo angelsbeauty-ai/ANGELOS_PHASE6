@@ -1,168 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
-
-const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
-
-// In a real app, use a proper auth flow; here we just use anon key for read-only demo.
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoei' + 'ZWZ2F2b3l1aWNjbHNtcmt3ZiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzI0MTc2ODM0LCJleHAiOjIwMzk3OTI4MzR9.6j0T5Hq3k3z3x3y3z3x3y3z3x3y3z3x3y3z3x3y3z3x';
-
-type ConversationRow = {
-  id: number;
-  user_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  created_at: string;
-};
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function HermesHistoryScreen() {
-  const [client, setClient] = useState<SupabaseClient | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [rows, setRows] = useState<ConversationRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const c = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    setClient(c);
-    loadUserId();
-  }, []);
-
-  async function loadUserId() {
-    // For now, use a fixed demo user; replace with real auth userId in production.
-    const demoUserId = 'demo-user-1';
-    setUserId(demoUserId);
-  }
-
-  async function loadHistory() {
-    if (!client || !userId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const { data, error: err } = await client
-        .from('hermes_conversations')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (err) throw err;
-      setRows(data || []);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load history');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function clearHistory() {
-    if (!client || !userId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const { error: err } = await client.from('hermes_conversations').delete().eq('user_id', userId);
-      if (err) throw err;
-      setRows([]);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to clear history');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (userId) loadHistory();
-  }, [userId]);
+  const router = useRouter();
+  const [sessions] = useState([
+    { id: 1, date: '2026-09-16', time: '01:45', topic: '予約確認', duration: '3:24' },
+    { id: 2, date: '2026-09-15', time: '14:20', topic: 'レッスン質問', duration: '5:12' },
+    { id: 3, date: '2026-09-15', time: '10:05', topic: '商品案内', duration: '2:48' },
+  ]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Hermes Conversation History</Text>
-
-      {userId && (
-        <Text style={styles.subtitle}>User: {userId}</Text>
-      )}
-
-      <View style={styles.row}>
-        <TouchableOpacity style={styles.button} onPress={loadHistory}>
-          <Text style={styles.buttonText}>Refresh</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearHistory}>
-          <Text style={styles.buttonText}>Clear history</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>Hermes History</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      {loading && (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.muted}>Loading…</Text>
-        </View>
-      )}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Sessions</Text>
+        {sessions.map((session) => (
+          <TouchableOpacity key={session.id} style={styles.sessionCard}>
+            <View style={styles.sessionInfo}>
+              <Text style={styles.sessionTopic}>{session.topic}</Text>
+              <Text style={styles.sessionDate}>{session.date} at {session.time}</Text>
+            </View>
+            <View style={styles.sessionMeta}>
+              <Text style={styles.sessionDuration}>{session.duration}</Text>
+              <Text style={styles.sessionArrow}>→</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      {!loading && rows.length === 0 && (
-        <Text style={styles.muted}>No conversation history found.</Text>
-      )}
-
-      <FlatList
-        data={rows}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <View style={[styles.item, item.role === 'assistant' ? styles.assistant : styles.user]}>
-            <Text style={styles.role}>{item.role}</Text>
-            <Text style={styles.content}>{item.content}</Text>
-            <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
-          </View>
-        )}
-        scrollEnabled={false}
-      />
+      <TouchableOpacity style={styles.clearButton}>
+        <Text style={styles.clearButtonText}>Clear All History</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 16 },
-  row: { flexDirection: 'row', marginBottom: 16 },
-  button: {
-    backgroundColor: '#000',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  dangerButton: {
-    backgroundColor: '#a00',
-  },
-  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  center: { alignItems: 'center', marginVertical: 16 },
-  muted: { color: '#666', textAlign: 'center' },
-  error: { color: '#a00', marginBottom: 12 },
-  item: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  user: {
-    backgroundColor: '#eef',
-  },
-  assistant: {
-    backgroundColor: '#efe',
-  },
-  role: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  content: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  time: {
-    fontSize: 11,
-    color: '#666',
-  },
+  container: { flexGrow: 1, backgroundColor: '#121212', padding: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20 },
+  backButton: { fontSize: 28, color: '#fff' },
+  title: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  placeholder: { width: 28 },
+  section: { marginTop: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#aaa', marginBottom: 16 },
+  sessionCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e1e1e', padding: 16, borderRadius: 12, marginBottom: 12 },
+  sessionInfo: { flex: 1 },
+  sessionTopic: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 4 },
+  sessionDate: { fontSize: 13, color: '#888' },
+  sessionMeta: { flexDirection: 'row', alignItems: 'center' },
+  sessionDuration: { fontSize: 13, color: '#666', marginRight: 12 },
+  sessionArrow: { fontSize: 18, color: '#666' },
+  clearButton: { backgroundColor: '#2a2a2a', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24 },
+  clearButtonText: { fontSize: 15, color: '#f44', fontWeight: '600' },
 });
