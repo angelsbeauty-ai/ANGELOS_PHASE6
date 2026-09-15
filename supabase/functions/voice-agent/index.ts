@@ -1,15 +1,13 @@
-// LiveKit voice agent for Hermes: joins a room, listens, and speaks back using OpenAI.
-// Requires Supabase secrets: OPENAI_API_KEY, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL.
+// LiveKit voice agent orchestrator: tells the Node agent to join a room.
+// Requires Supabase secrets: LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL, OPENAI_API_KEY, AGENT_HTTP_BASE_URL.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { AccessToken, RoomServiceClient } from "https://esm.sh/livekit-server-sdk@2.13.0";
+import { AccessToken } from "https://esm.sh/livekit-server-sdk@2.13.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in short, natural sentences (1–3 sentences). Be calm, helpful, and concise. You are talking to a user over voice in real time.`;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -25,10 +23,10 @@ serve(async (req: Request) => {
 
   const apiKey = Deno.env.get("LIVEKIT_API_KEY")?.trim();
   const apiSecret = Deno.env.get("LIVEKIT_API_SECRET")?.trim();
-  const url = Deno.env.get("LIVEKIT_URL")?.trim();
   const openAiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
+  const agentBaseUrl = Deno.env.get("AGENT_HTTP_BASE_URL")?.trim(); // e.g. https://agent.yourdomain.com
 
-  if (!apiKey || !apiSecret || !url || !openAiKey) {
+  if (!apiKey || !apiSecret || !openAiKey) {
     return new Response(
       JSON.stringify({ error: "Voice agent not configured. Add LIVEKIT_* and OPENAI_API_KEY to Supabase secrets." }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -50,7 +48,7 @@ serve(async (req: Request) => {
     });
   }
 
-  // Create agent token so this function can join the room as "hermes-agent"
+  // Create agent token (for clients that want to know the agent identity).
   const agentGrant = {
     roomJoin: true,
     room: roomName,
@@ -66,9 +64,20 @@ serve(async (req: Request) => {
   });
   agentToken.addGrant(agentGrant);
 
-  // For now, return the token and a simple plan; actual audio loop needs a long-lived process.
-  // A full real-time loop (STT → LLM → TTS → publish audio) is better run as a separate Node service.
-  // This endpoint gives the client what it needs to know the agent is ready.
+  // If an HTTP agent is configured, tell it to join the room.
+  let agentJoined = false;
+  if (agentBaseUrl) {
+    try {
+      const res = await fetch(agentBaseUrl + "/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomName }),
+      });
+      if (res.ok) agentJoined = true;
+    } catch {
+      // Ignore; agent join is best-effort.
+    }
+  }
 
   return new Response(
     JSON.stringify({
@@ -76,7 +85,10 @@ serve(async (req: Request) => {
       room: roomName,
       agentIdentity: "hermes-agent",
       agentToken: agentToken.toJwt(),
-      note: "Agent scaffold ready. For full audio loop, run a Node agent that joins this room and uses OpenAI TTS/STT.",
+      agentJoined,
+      note: agentJoined
+        ? "Agent HTTP server notified to join the room."
+        : "No AGENT_HTTP_BASE_URL configured; agent did not join.",
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
