@@ -40,12 +40,12 @@ export function useHermesVoiceLiveKit() {
 
       const session: HermesVoiceSession = await res.json();
 
-      // Ask the Hermes agent to join this room
+      // Ask the Hermes agent to join this room (pass userId for memory)
       try {
         const agentRes = await fetch(AGENT_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomName: session.roomName }),
+          body: JSON.stringify({ roomName: session.roomName, userId: options?.userId }),
         });
         if (agentRes.ok) {
           setAgentJoined(true);
