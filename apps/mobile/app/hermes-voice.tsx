@@ -1,412 +1,228 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, Platform } from 'react-native';
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import * as Speech from 'expo-speech';
-import { Screen } from '../src/components/Screen';
-import { getActiveWorkspace } from '../src/lib/workspace';
-import { sendVoiceToHermes, type VoiceRequest, type VoiceResponse } from '../src/lib/hermes-voice';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, PanResponder } from 'react-native';
+import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
+import { useSpeechToText } from '../src/lib/useSpeechToText';
+import * as LiveKit from 'livekit-client';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const palette = {
-  background: '#FCFBF8',
-  elevated: '#FFFFFF',
-  warmSurface: '#F6F2EB',
-  primaryText: '#191919',
-  secondaryText: '#6F6A63',
-  border: '#EAE5DD',
-  gold: '#B9975B',
-  softGold: '#E9DDC7',
-  success: '#557662',
-  warning: '#A87942',
-  critical: '#A45E59',
-};
-
-const radius = { card: 18, control: 16, pill: 999 };
-const spacing = { xs: 8, sm: 16, md: 24 };
-const shadow = {
-  soft: {
-    shadowColor: '#191919',
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
-  },
-};
+const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
+const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function HermesVoiceScreen() {
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [transcript, setTranscript] = useState('');
-  const [reply, setReply] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const router = useRouter();
+  const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
+  const { isListening, transcript, error: sttError, startListening, stopListening, setTranscript } = useSpeechToText({ language: 'ja-JP' });
+  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
+  const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [showTutorial, setShowTutorial] = useState(true);
 
-  // Load workspace on mount
-  useEffect(() => {
-    loadWorkspace();
-  }, []);
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH / 2 - 40, y: SCREEN_HEIGHT / 2 })).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        pan.setValue({ x: gestureState.dx + SCREEN_WIDTH / 2 - 40, y: gestureState.dy + SCREEN_HEIGHT / 2 });
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        pan.flattenOffset();
+      },
+    })
+  ).current;
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (recording) {
-        recording.stopAndUnloadAsync().catch(() => {});
-      }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+    const checkTutorial = async () => {
+      const seen = await AsyncStorage.getItem('hermes_tutorial_seen');
+      if (seen === 'true') setShowTutorial(false);
     };
-  }, [recording]);
-
-  const speak = useCallback(async (text: string) => {
-    if (!text || !text.trim()) return;
-    try {
-      await Speech.speak(text, {
-        language: 'en-US',
-        pitch: 1,
-        rate: 0.95,
-        volume: 1,
-      });
-    } catch {
-      // Speech not available on this device
-    }
+    checkTutorial();
   }, []);
 
-  async function loadWorkspace() {
-    try {
-      const w = await getActiveWorkspace();
-      setWorkspaceId(w.id);
-    } catch {
-      setError('No workspace found. Please sign in.');
+  useEffect(() => {
+    if (!room) {
+      setStatus('idle');
+      setAgentState('idle');
+      return;
     }
-  }
+    setStatus('connected');
+  }, [room]);
 
-  async function startRecording() {
-    if (!workspaceId || busy) return;
+  const [lastSent, setLastSent] = useState('');
+
+  useEffect(() => {
+    if (!room || !transcript || transcript === lastSent) return;
+    if (!isListening && transcript.trim().length > 0) {
+      sendUserSpeech(transcript);
+      setLastSent(transcript);
+      setAgentState('thinking');
+      setTimeout(() => setAgentState('speaking'), 800);
+      setTimeout(() => setAgentState('idle'), 2500);
+    }
+  }, [isListening, transcript, room]);
+
+  const handleToggle = async () => {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
+      if (room) {
+        await endSession();
+      } else {
+        await startSession({ userId: 'demo-user-1', language: 'auto', displayName: 'AngelOs user' });
+      }
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
-      setRecordingDuration(0);
+  const sendUserSpeech = async (text: string) => {
+    if (!room || !text.trim()) return;
+    try {
+      const payload = { type: 'user-speech', text: text.trim() };
+      await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(payload)), { topic: 'chat' });
       setTranscript('');
-      setReply('');
-      setError(null);
-
-      timerRef.current = setInterval(() => {
-        setRecordingDuration((d) => d + 1);
-      }, 1000);
-    } catch {
-      setError('Couldn\'t start recording. Check microphone permission.');
+      setLastSent('');
+    } catch (e) {
+      console.error('Send speech error:', e);
     }
-  }
+  };
 
-  async function stopRecording() {
-    if (!recording) return;
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const handleAvatarTap = async () => {
+    if (status === 'connected') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      startListening();
+      setAgentState('listening');
     }
+  };
 
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+  const handleTutorialDismiss = async () => {
+    await AsyncStorage.setItem('hermes_tutorial_seen', 'true');
+    setShowTutorial(false);
+  };
 
-      if (uri) {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const filename = `voice-${Date.now()}.m4a`;
-
-        await sendAudioToHermes(base64, filename);
-      }
-
-      setRecording(null);
-      setIsRecording(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to stop recording.');
-      setRecording(null);
-      setIsRecording(false);
+  const getAvatarEmoji = () => {
+    switch (agentState) {
+      case 'listening': return '👂';
+      case 'thinking': return '🤔';
+      case 'speaking': return '🗣️';
+      default: return '🤖';
     }
-  }
+  };
 
-  async function sendAudioToHermes(base64: string, filename: string) {
-    if (!workspaceId) return;
-
-    setBusy(true);
-    setError(null);
-
-    try {
-      const request: VoiceRequest = { audioBase64: base64, filename };
-      const response: VoiceResponse = await sendVoiceToHermes(workspaceId, request);
-
-      setTranscript(response.transcript);
-      setReply(response.reply);
-
-      if (response.reply) {
-        speak(response.reply);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to send voice message.';
-      setError(message);
-    } finally {
-      setBusy(false);
+  const getAvatarColor = () => {
+    switch (agentState) {
+      case 'listening': return '#0ea5e9';
+      case 'thinking': return '#f59e0b';
+      case 'speaking': return '#10b981';
+      default: return '#334155';
     }
-  }
-
-  async function replayVoice() {
-    if (!reply) return;
-    speak(reply);
-  }
-
-  async function resetVoice() {
-    setTranscript('');
-    setReply('');
-    setError(null);
-  }
+  };
 
   return (
-    <Screen style={styles.screen}>
-      <View style={styles.container}>
-        <Text style={styles.screenTitle}>Talk to Hermes</Text>
-        <Text style={[styles.mutedText, { marginTop: spacing.sm }]}>
-          Tap the microphone to record a voice message. Hermes will listen and talk back.
-        </Text>
+    <View style={styles.container}>
+      {showTutorial && (
+        <View style={styles.tutorialOverlay}>
+          <View style={styles.tutorialBox}>
+            <Text style={styles.tutorialTitle}>👋 Welcome!</Text>
+            <Text style={styles.tutorialText}>Drag Hermes around</Text>
+            <Text style={styles.tutorialText}>Tap to make it listen</Text>
+            <Text style={styles.tutorialText}>Speak in Japanese</Text>
+            <TouchableOpacity style={styles.tutorialButton} onPress={handleTutorialDismiss}>
+              <Text style={styles.tutorialButtonText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
-        {error ? (
-          <View style={[styles.card, styles.errorCard]}>
-            <Text style={styles.cardTitle}>Issue</Text>
-            <Text style={[styles.bodyText, { color: palette.secondaryText }]}>{error}</Text>
-            {workspaceId && (
-              <Pressable onPress={resetVoice} style={styles.primaryAction}>
-                <Text style={styles.primaryActionText}>Try again</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null}
+      <Animated.View
+        style={[
+          styles.avatarContainer,
+          { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={[styles.avatar, { backgroundColor: getAvatarColor() }]}
+          onPress={handleAvatarTap}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.avatarEmoji}>{getAvatarEmoji()}</Text>
+          <Text style={styles.avatarLabel}>Hermes</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
-        {!workspaceId ? (
-          <View style={[styles.card, styles.loadingCard]}>
-            <Text style={[styles.bodyText, { color: palette.secondaryText }]}>Loading workspace…</Text>
-          </View>
-        ) : busy && !isRecording ? (
-          <View style={[styles.card, styles.loadingCard]}>
-            <Text style={[styles.bodyText, { color: palette.secondaryText }]}>Sending voice to Hermes…</Text>
-          </View>
-        ) : isRecording ? (
-          <View style={[styles.card, styles.recordingActive]}>
-            <View style={styles.recordingIndicator}>
-              <View style={styles.redDot} />
-            </View>
-            <Text style={styles.recordingText}>Recording…</Text>
-            <Text style={[styles.timer, { color: palette.secondaryText }]}>{recordingDuration}s</Text>
-            <Pressable onPress={stopRecording} style={styles.stopButton}>
-              <View style={styles.stopIcon}>
-                <Text style={styles.stopText}>⏹</Text>
-              </View>
-              <View style={styles.stopLabel}>
-                <Text style={[styles.mutedText, { color: palette.secondaryText }]}>Tap to stop</Text>
-              </View>
-            </Pressable>
-          </View>
-        ) : transcript || reply ? (
-          <View style={[styles.card, styles.transcriptCard, { borderColor: palette.gold, borderWidth: 1.5 }]}>
-            <Text style={styles.cardTitle}>You said</Text>
-            {transcript ? (
-              <Text style={[styles.bodyText, { textAlign: 'center', marginBottom: spacing.sm }]}>{transcript}</Text>
-            ) : (
-              <Text style={[styles.bodyText, { textAlign: 'center', marginBottom: spacing.sm }]}>Voice message</Text>
-            )}
-
-            {reply ? (
-              <>
-                <Text style={[styles.cardTitle, { marginTop: 8, marginBottom: 4 }]}>Hermes replied</Text>
-                <Text style={[styles.replyText, { textAlign: 'center', marginBottom: spacing.sm }]}>{reply}</Text>
-                <Pressable onPress={replayVoice} style={styles.playButton}>
-                  <Text style={styles.playText}>🔊 Hear it again</Text>
-                </Pressable>
-              </>
-            ) : null}
-          </View>
-        ) : (
-          <Pressable onPress={startRecording} style={styles.micButton}>
-            <View style={styles.micIcon}>
-              <Text style={styles.micText}>🎤</Text>
-            </View>
-            <View style={styles.micLabel}>
-              <Text style={[styles.mutedText, { color: palette.secondaryText }]}>
-                {workspaceId ? 'Tap to record' : 'Loading workspace...'}
-              </Text>
-            </View>
-          </Pressable>
-        )}
-
-        {reply && (
-          <Text style={[styles.mutedText, { textAlign: 'center', marginTop: 8 }]}>
-            Voice sent to Hermes Agent for transcription and reply.
-          </Text>
-        )}
+      <View style={styles.header}>
+        <Text style={styles.title}>Hermes</Text>
+        <View style={styles.headerLinks}>
+          <TouchableOpacity onPress={() => router.push('/hermes-settings')}>
+            <Text style={styles.headerLink}>⚙️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/hermes-history')}>
+            <Text style={styles.headerLink}>📋</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </Screen>
+
+      {isConnecting && (
+        <View style={styles.row}>
+          <ActivityIndicator size="small" />
+          <Text style={styles.statusText}>Connecting…</Text>
+        </View>
+      )}
+
+      {status === 'connected' && agentJoined && (
+        <View style={styles.row}>
+          <Text style={styles.ok}>● Connected</Text>
+        </View>
+      )}
+
+      <View style={styles.controls}>
+        <TouchableOpacity style={styles.button} onPress={handleToggle}>
+          <Text style={styles.buttonText}>{room ? 'End' : 'Start'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {status === 'connected' && (
+        <View style={styles.speechSection}>
+          {transcript ? (
+            <View style={styles.transcriptBox}>
+              <Text style={styles.transcriptLabel}>You:</Text>
+              <Text style={styles.transcript}>{transcript}</Text>
+            </View>
+          ) : (
+            <Text style={styles.muted}>Tap Hermes and speak…</Text>
+          )}
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  mutedText: {
-    color: palette.secondaryText,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: palette.primaryText,
-    marginBottom: spacing.sm,
-  },
-  errorCard: {
-    marginBottom: 20,
-    padding: 16,
-  },
-  loadingCard: {
-    alignItems: 'center',
-    marginBottom: 20,
-    padding: 16,
-  },
-  card: {
-    gap: spacing.xs,
-    padding: spacing.sm,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.elevated,
-  },
-  micButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.elevated,
-    borderRadius: radius.card,
-    paddingVertical: 28,
-    paddingHorizontal: 40,
-    marginBottom: 20,
-    ...shadow.soft,
-  },
-  micIcon: {
-    marginBottom: 8,
-  },
-  micText: {
-    fontSize: 40,
-  },
-  micLabel: {
-    marginTop: 4,
-  },
-  recordingActive: {
-    alignItems: 'center',
-    backgroundColor: palette.elevated,
-    borderRadius: radius.card,
-    padding: 24,
-    marginBottom: 20,
-    ...shadow.soft,
-  },
-  recordingIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: palette.critical,
-    marginBottom: 12,
-  },
-  redDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: palette.critical,
-    margin: 2,
-  },
-  recordingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: palette.primaryText,
-    marginBottom: 4,
-  },
-  timer: {
-    fontSize: 14,
-  },
-  stopButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.elevated,
-    borderRadius: radius.control,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    ...shadow.soft,
-    marginTop: 8,
-  },
-  stopIcon: {
-    marginRight: 8,
-  },
-  stopText: {
-    fontSize: 20,
-  },
-  stopLabel: {
-    marginTop: 2,
-  },
-  transcriptCard: {
-    alignItems: 'center',
-    marginBottom: 20,
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: palette.primaryText,
-    marginBottom: 4,
-  },
-  bodyText: {
-    fontSize: 16,
-    lineHeight: 23,
-    color: palette.primaryText,
-  },
-  replyText: {
-    fontSize: 16,
-    lineHeight: 23,
-    color: palette.primaryText,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  playButton: {
-    alignSelf: 'center',
-    backgroundColor: palette.gold,
-    borderRadius: radius.control,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 4,
-  },
-  playText: {
-    color: palette.primaryText,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  hint: {
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.95)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
+  tutorialBox: { backgroundColor: '#1e293b', padding: 28, borderRadius: 16, maxWidth: 320, borderWidth: 1, borderColor: '#334155' },
+  tutorialTitle: { fontSize: 22, fontWeight: '700', color: '#f1f5f9', marginBottom: 16, textAlign: 'center' },
+  tutorialText: { fontSize: 15, color: '#94a3b8', marginBottom: 10, textAlign: 'center' },
+  tutorialButton: { backgroundColor: '#0ea5e9', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
+  tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  avatarContainer: { position: 'absolute', zIndex: 1000 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#0ea5e9', shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+  avatarEmoji: { fontSize: 32 },
+  avatarLabel: { color: '#f1f5f9', fontSize: 12, fontWeight: '600', marginTop: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
+  title: { fontSize: 24, fontWeight: '600', color: '#f1f5f9' },
+  headerLinks: { flexDirection: 'row', gap: 16 },
+  headerLink: { fontSize: 20 },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  statusText: { fontSize: 16, color: '#f1f5f9', marginLeft: 8 },
+  muted: { fontSize: 14, color: '#64748b' },
+  ok: { color: '#10b981', fontSize: 15, fontWeight: '600' },
+  controls: { padding: 16 },
+  button: { backgroundColor: '#0ea5e9', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  speechSection: { flex: 1, padding: 16 },
+  transcriptBox: { padding: 16, backgroundColor: '#1e293b', borderRadius: 12, borderWidth: 1, borderColor: '#334155' },
+  transcriptLabel: { fontSize: 12, color: '#94a3b8', marginBottom: 6 },
+  transcript: { fontSize: 15, color: '#f1f5f9' },
 });
