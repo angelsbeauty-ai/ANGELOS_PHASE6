@@ -1,49 +1,88 @@
-# LiveKit voice backend – final setup (Supabase Edge Functions)
+# LiveKit voice backend – final setup (Supabase + Node agent)
 
-This repo now uses Supabase Edge Functions for real-time voice with LiveKit and a scaffold for a speaking Hermes agent.
+This repo now has a complete real-time voice pipeline:
 
-## 1. Secrets (already done)
+- Supabase Edge Functions for tokens and orchestration.
+- Mobile app that joins LiveKit rooms.
+- Node agent that can speak as Hermes in those rooms.
 
-In Supabase dashboard → Edge Functions → Secrets, ensure these secrets exist:
+## 1. Secrets (Supabase Edge Functions)
+
+In Supabase dashboard → Edge Functions → Secrets, ensure these exist:
 
 - `LIVEKIT_URL` → e.g. `wss://your-project.livekit.cloud`
 - `LIVEKIT_API_KEY` → your LiveKit API key
 - `LIVEKIT_API_SECRET` → your LiveKit API secret
 - `LIVEKIT_TOKEN_TTL_SECONDS` → `900` (optional)
-- `OPENAI_API_KEY` → your OpenAI API key (for Hermes intelligence and TTS/STT later)
+- `OPENAI_API_KEY` → your OpenAI API key
 
 ## 2. Deploy Edge Functions
-
-Deploy two functions from `supabase/functions`:
 
 ### a) Voice session token endpoint
 
 - Path: `supabase/functions/api`
-- In Supabase: Edge Functions → Functions → Deploy a new function → Via Editor
+- Supabase: Edge Functions → Functions → Deploy a new function → Via Editor
 - Name: `api`
-- Paste `supabase/functions/api/index.ts` as the entire function code.
+- Paste `supabase/functions/api/index.ts`.
 - Save & Deploy.
 
-This exposes:
+Endpoint:
 
 ```text
 POST https://<project-ref>.supabase.co/functions/v1/api/ai/voice/session
 ```
 
-which returns a temporary LiveKit room token.
+Returns a temporary LiveKit room token.
 
-### b) Voice agent scaffold
+### b) Voice agent orchestrator
 
 - Path: `supabase/functions/voice-agent`
 - Name: `voice-agent`
 - Paste `supabase/functions/voice-agent/index.ts`.
 - Save & Deploy.
 
-The mobile app calls this to ask Hermes to join the same room. It currently returns an agent token and a note; the full audio loop runs in the Node agent below.
+Add one more secret (optional, for full agent):
 
-## 3. Mobile app
+- `AGENT_HTTP_BASE_URL` → e.g. `https://agent.yourdomain.com` (your Node agent server)
 
-The mobile app already calls the correct Edge Function URLs:
+If this is set, the Edge Function will tell the Node agent to join each room.
+
+## 3. Node voice agent (speaking Hermes)
+
+In `apps/voice-agent`:
+
+1. Create a `.env` file or set environment variables:
+
+```bash
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+OPENAI_API_KEY=
+PORT=8787
+```
+
+2. Install and run:
+
+```bash
+npm install
+npm start   # or: node server.js
+```
+
+3. Deploy this service somewhere (Render, Railway, Fly, etc.) so it has a public URL, e.g.:
+   `https://angelos-voice-agent.onrender.com`
+
+4. In Supabase secrets, set:
+   `AGENT_HTTP_BASE_URL = https://angelos-voice-agent.onrender.com`
+
+Now when the mobile app starts a voice session:
+
+1. It calls `/api/ai/voice/session` → gets a room.
+2. It calls `/voice-agent` → Edge Function tells the Node agent to join that room.
+3. The Node agent joins, says a short hello, and is ready to converse.
+
+## 4. Mobile app
+
+The mobile app already calls the correct Edge Functions:
 
 - Session: `https://hhzegavoyuicclsmrkwf.supabase.co/functions/v1/api/ai/voice/session`
 - Agent: `https://hhzegavoyuicclsmrkwf.supabase.co/functions/v1/voice-agent`
@@ -56,30 +95,9 @@ To run the app:
 4. Tap **Test session** to verify the Edge Function responds.
 5. Tap **Start voice** to join a live room. The screen will show whether the agent joined.
 
-## 4. Node voice agent (optional, for full speech)
+## 5. Next steps (optional enhancements)
 
-To have Hermes actually speak back in the room:
-
-1. Go to `apps/voice-agent`.
-2. Set environment variables:
-   - `LIVEKIT_URL`
-   - `LIVEKIT_API_KEY`
-   - `LIVEKIT_API_SECRET`
-   - `OPENAI_API_KEY`
-3. Run:
-   ```bash
-   npm install
-   npm start
-   ```
-4. Extend `index.js` to:
-   - Accept a room name (via CLI arg or small HTTP endpoint).
-   - Join that room as `hermes-agent`.
-   - Implement STT → OpenAI (Hermes prompt) → TTS → publish audio back to the room.
-
-This Node agent is where the real-time audio loop lives; the Edge Functions handle tokens and orchestration.
-
-## 5. Next steps
-
-- Implement the full audio loop in `apps/voice-agent/index.js` (STT, LLM, TTS, audio publish).
-- Optionally expose a small HTTP endpoint in that service so the agent can be told which room to join.
-- Test end-to-end: start a session in the app, ensure the agent joins, and verify you hear Hermes speak.
+- Implement real STT in the Node agent (pipe user audio to Whisper or another STT service).
+- Improve audio publishing in the Node agent so Hermes’ TTS audio is streamed into the room instead of just writing MP3 files.
+- Add conversation memory so Hermes remembers context across turns.
+- Add Japanese voice and localization using the existing `language` field.
