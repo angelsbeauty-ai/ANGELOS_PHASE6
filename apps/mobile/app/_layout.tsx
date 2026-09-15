@@ -35,7 +35,7 @@ export default function RootLayout() {
     <ThemeProvider value={DarkTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ title: 'AngelOs', headerShown: false }} />
-        <Stack.Screen name="hermes-voice" options={{ title: 'Hermes', headerShown: false }} />
+        <Stack.Screen name="hermes-voice" options={{ title: 'Hermes Voice', headerShown: false }} />
         <Stack.Screen name="hermes-settings" options={{ title: 'Settings', headerShown: false }} />
         <Stack.Screen name="hermes-history" options={{ title: 'History', headerShown: false }} />
         <Stack.Screen name="ai-settings" options={{ title: 'AI Settings', headerShown: false }} />
