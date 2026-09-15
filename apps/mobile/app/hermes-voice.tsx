@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, PanResponder, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import { useSpeechToText } from '../src/lib/useSpeechToText';
 import * as LiveKit from 'livekit-client';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
 const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
 const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
@@ -14,13 +15,12 @@ export default function HermesVoiceScreen() {
   const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
   const { isListening, transcript, error: sttError, startListening, stopListening, setTranscript } = useSpeechToText({ language: 'ja-JP' });
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
-  const [testResult, setTestResult] = useState<any | null>(null);
-  const [testing, setTesting] = useState(false);
-  const [lastSent, setLastSent] = useState('');
   const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [showTutorial, setShowTutorial] = useState(true);
 
   // Draggable avatar
   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH / 2 - 40, y: SCREEN_HEIGHT / 2 })).current;
+  const scale = useRef(new Animated.Value(1)).current;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -33,27 +33,30 @@ export default function HermesVoiceScreen() {
     })
   ).current;
 
+  // Pulse animation when speaking
+  useEffect(() => {
+    if (agentState === 'speaking') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 1.2, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      scale.setValue(1);
+    }
+  }, [agentState]);
+
   useEffect(() => {
     if (!room) {
       setStatus('idle');
       setAgentState('idle');
       return;
     }
-
-    const onDisconnected = () => {
-      setStatus('idle');
-      setAgentState('idle');
-    };
-
-    room.on('disconnected', onDisconnected);
     setStatus('connected');
-
-    return () => {
-      room.off('disconnected', onDisconnected);
-    };
   }, [room]);
 
-  // Auto-send transcript when user stops speaking
+  // Auto-send transcript
   useEffect(() => {
     if (!room || !transcript || transcript === lastSent) return;
     if (!isListening && transcript.trim().length > 0) {
@@ -65,6 +68,8 @@ export default function HermesVoiceScreen() {
     }
   }, [isListening, transcript, room]);
 
+  const [lastSent, setLastSent] = useState('');
+
   const handleToggle = async () => {
     try {
       if (room) {
@@ -74,24 +79,6 @@ export default function HermesVoiceScreen() {
       }
     } catch (e: any) {
       console.error(e);
-    }
-  };
-
-  const handleTest = async () => {
-    try {
-      setTesting(true);
-      setTestResult(null);
-      const res = await fetch(VOICE_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: 'auto', displayName: 'Test user' }),
-      });
-      const data = await res.json();
-      setTestResult({ ok: res.ok, status: res.status, data });
-    } catch (e: any) {
-      setTestResult({ ok: false, error: e?.message || String(e) });
-    } finally {
-      setTesting(false);
     }
   };
 
@@ -107,8 +94,9 @@ export default function HermesVoiceScreen() {
     }
   };
 
-  const handleAvatarTap = () => {
+  const handleAvatarTap = async () => {
     if (status === 'connected') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       startListening();
       setAgentState('listening');
     }
@@ -134,12 +122,27 @@ export default function HermesVoiceScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Tutorial Overlay */}
+      {showTutorial && (
+        <View style={styles.tutorialOverlay}>
+          <View style={styles.tutorialBox}>
+            <Text style={styles.tutorialTitle}>👋 Welcome!</Text>
+            <Text style={styles.tutorialText}>Drag Hermes around the screen</Text>
+            <Text style={styles.tutorialText}>Tap Hermes to make it listen</Text>
+            <Text style={styles.tutorialText}>Speak in Japanese</Text>
+            <TouchableOpacity style={styles.tutorialButton} onPress={() => setShowTutorial(false)}>
+              <Text style={styles.tutorialButtonText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Draggable Hermes Avatar */}
       <Animated.View
         style={[
           styles.avatarContainer,
           {
-            transform: [{ translateX: pan.x }, { translateY: pan.y }],
+            transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }],
           },
         ]}
         {...panResponder.panHandlers}
@@ -170,90 +173,29 @@ export default function HermesVoiceScreen() {
         </View>
       )}
 
-      {status === 'connected' && room && (
-        <View style={styles.row}>
-          <Text style={styles.statusText}>Live voice active</Text>
-          <Text style={styles.muted}>Room: {(room as any).name}</Text>
-        </View>
-      )}
-
       {status === 'connected' && agentJoined && (
         <View style={styles.row}>
-          <Text style={styles.ok}>Hermes agent in the room</Text>
+          <Text style={styles.ok}>● Hermes agent connected</Text>
         </View>
-      )}
-
-      {status === 'connected' && !agentJoined && (
-        <View style={styles.row}>
-          <Text style={styles.muted}>Agent not joined (still ok for now)</Text>
-        </View>
-      )}
-
-      {status === 'error' && error && (
-        <Text style={styles.error}>{error}</Text>
-      )}
-
-      {status === 'idle' && !isConnecting && (
-        <Text style={styles.muted}>Tap to start a voice conversation with Hermes</Text>
       )}
 
       {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity style={styles.button} onPress={handleToggle}>
-          <Text style={styles.buttonText}>{room ? 'End voice' : 'Start voice'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, styles.testButton]} onPress={handleTest}>
-          <Text style={styles.buttonText}>Test session</Text>
+          <Text style={styles.buttonText}>{room ? 'End' : 'Start'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Speech */}
       {status === 'connected' && (
         <View style={styles.speechSection}>
-          <Text style={styles.label}>Speak to Hermes</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.micButton, isListening ? styles.micActive : {}]}
-              onPress={isListening ? stopListening : startListening}
-            >
-              <Text style={styles.micIcon}>{isListening ? '🎤' : '🎙️'}</Text>
-              <Text style={styles.buttonText}>{isListening ? 'Listening…' : 'Tap to speak'}</Text>
-            </TouchableOpacity>
-          </View>
           {transcript ? (
             <View style={styles.transcriptBox}>
-              <Text style={styles.transcriptLabel}>You said:</Text>
+              <Text style={styles.transcriptLabel}>You:</Text>
               <Text style={styles.transcript}>{transcript}</Text>
             </View>
           ) : (
-            <Text style={styles.muted}>Your speech will appear here</Text>
-          )}
-          {sttError && <Text style={styles.error}>STT: {sttError}</Text>}
-        </View>
-      )}
-
-      {testing && (
-        <View style={styles.row}>
-          <ActivityIndicator size="small" />
-          <Text style={styles.statusText}>Testing…</Text>
-        </View>
-      )}
-
-      {testResult && (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultTitle}>Test result</Text>
-          <Text style={testResult.ok ? styles.ok : styles.error}>
-            {testResult.ok ? 'OK' : 'Failed'}
-          </Text>
-          {testResult.status && <Text style={styles.muted}>Status: {testResult.status}</Text>}
-          {testResult.data && (
-            <Text style={styles.muted} numberOfLines={6}>
-              {JSON.stringify(testResult.data, null, 2)}
-            </Text>
-          )}
-          {testResult.error && (
-            <Text style={styles.error}>{testResult.error}</Text>
+            <Text style={styles.muted}>Tap Hermes and speak…</Text>
           )}
         </View>
       )}
@@ -263,19 +205,14 @@ export default function HermesVoiceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
+  tutorialBox: { backgroundColor: '#222', padding: 24, borderRadius: 16, maxWidth: 300 },
+  tutorialTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 16, textAlign: 'center' },
+  tutorialText: { fontSize: 14, color: '#ccc', marginBottom: 8, textAlign: 'center' },
+  tutorialButton: { backgroundColor: '#0a0', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, marginTop: 16 },
+  tutorialButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
   avatarContainer: { position: 'absolute', zIndex: 1000 },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
-  },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.5, shadowRadius: 10, elevation: 10 },
   avatarEmoji: { fontSize: 32 },
   avatarLabel: { color: '#fff', fontSize: 10, fontWeight: '700', marginTop: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
@@ -283,34 +220,13 @@ const styles = StyleSheet.create({
   historyLink: { fontSize: 14, color: '#0af', fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   statusText: { fontSize: 16, color: '#fff', marginLeft: 8 },
-  muted: { fontSize: 12, color: '#888', marginLeft: 8 },
-  error: { color: '#f33', padding: 16 },
-  ok: { color: '#0f0', marginLeft: 8 },
-  controls: { flexDirection: 'row', padding: 16 },
-  button: {
-    backgroundColor: '#333',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  testButton: { backgroundColor: '#222' },
+  muted: { fontSize: 14, color: '#888' },
+  ok: { color: '#0f0' },
+  controls: { padding: 16 },
+  button: { backgroundColor: '#333', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 10 },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   speechSection: { flex: 1, padding: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#fff', marginBottom: 8 },
-  micButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#222',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  micActive: { backgroundColor: '#0a0' },
-  micIcon: { fontSize: 20, marginRight: 8 },
-  transcriptBox: { marginTop: 12, padding: 12, backgroundColor: '#222', borderRadius: 8 },
+  transcriptBox: { padding: 12, backgroundColor: '#222', borderRadius: 8 },
   transcriptLabel: { fontSize: 12, color: '#888', marginBottom: 4 },
   transcript: { fontSize: 14, color: '#fff' },
-  resultBox: { margin: 16, padding: 12, backgroundColor: '#222', borderRadius: 8 },
-  resultTitle: { fontSize: 14, fontWeight: '700', color: '#fff', marginBottom: 8 },
 });
