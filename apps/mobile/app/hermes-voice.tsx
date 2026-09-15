@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, PanResponder, Animated, Dimensions } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import { useSpeechToText } from '../src/lib/useSpeechToText';
 import * as LiveKit from 'livekit-client';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 
 const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
 const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function HermesVoiceScreen() {
   const router = useRouter();
@@ -16,15 +17,32 @@ export default function HermesVoiceScreen() {
   const [testResult, setTestResult] = useState<any | null>(null);
   const [testing, setTesting] = useState(false);
   const [lastSent, setLastSent] = useState('');
+  const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+
+  // Draggable avatar
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH / 2 - 40, y: SCREEN_HEIGHT / 2 })).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        pan.setValue({ x: gestureState.dx + SCREEN_WIDTH / 2 - 40, y: gestureState.dy + SCREEN_HEIGHT / 2 });
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        pan.flattenOffset();
+      },
+    })
+  ).current;
 
   useEffect(() => {
     if (!room) {
       setStatus('idle');
+      setAgentState('idle');
       return;
     }
 
     const onDisconnected = () => {
       setStatus('idle');
+      setAgentState('idle');
     };
 
     room.on('disconnected', onDisconnected);
@@ -41,6 +59,9 @@ export default function HermesVoiceScreen() {
     if (!isListening && transcript.trim().length > 0) {
       sendUserSpeech(transcript);
       setLastSent(transcript);
+      setAgentState('thinking');
+      setTimeout(() => setAgentState('speaking'), 800);
+      setTimeout(() => setAgentState('idle'), 2500);
     }
   }, [isListening, transcript, room]);
 
@@ -86,8 +107,54 @@ export default function HermesVoiceScreen() {
     }
   };
 
+  const handleAvatarTap = () => {
+    if (status === 'connected') {
+      startListening();
+      setAgentState('listening');
+    }
+  };
+
+  const getAvatarEmoji = () => {
+    switch (agentState) {
+      case 'listening': return '👂';
+      case 'thinking': return '🤔';
+      case 'speaking': return '🗣️';
+      default: return '🤖';
+    }
+  };
+
+  const getAvatarColor = () => {
+    switch (agentState) {
+      case 'listening': return '#0a0';
+      case 'thinking': return '#aa0';
+      case 'speaking': return '#00a';
+      default: return '#333';
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
+      {/* Draggable Hermes Avatar */}
+      <Animated.View
+        style={[
+          styles.avatarContainer,
+          {
+            transform: [{ translateX: pan.x }, { translateY: pan.y }],
+          },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={[styles.avatar, { backgroundColor: getAvatarColor() }]}
+          onPress={handleAvatarTap}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.avatarEmoji}>{getAvatarEmoji()}</Text>
+          <Text style={styles.avatarLabel}>Hermes</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Hermes Voice</Text>
         <TouchableOpacity onPress={() => router.push('/hermes-history')}>
@@ -95,6 +162,7 @@ export default function HermesVoiceScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Status */}
       {isConnecting && (
         <View style={styles.row}>
           <ActivityIndicator size="small" />
@@ -129,7 +197,8 @@ export default function HermesVoiceScreen() {
         <Text style={styles.muted}>Tap to start a voice conversation with Hermes</Text>
       )}
 
-      <View style={styles.row}>
+      {/* Controls */}
+      <View style={styles.controls}>
         <TouchableOpacity style={styles.button} onPress={handleToggle}>
           <Text style={styles.buttonText}>{room ? 'End voice' : 'Start voice'}</Text>
         </TouchableOpacity>
@@ -139,8 +208,9 @@ export default function HermesVoiceScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Speech */}
       {status === 'connected' && (
-        <View style={styles.micSection}>
+        <View style={styles.speechSection}>
           <Text style={styles.label}>Speak to Hermes</Text>
           <View style={styles.row}>
             <TouchableOpacity
@@ -187,40 +257,47 @@ export default function HermesVoiceScreen() {
           )}
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: '700' },
-  historyLink: { fontSize: 14, color: '#0066cc', fontWeight: '600' },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  statusText: { fontSize: 16, marginLeft: 8 },
-  muted: { fontSize: 12, color: '#666', marginLeft: 8 },
-  error: { color: '#d33', marginBottom: 12 },
-  ok: { color: '#0a0', marginLeft: 8 },
+  container: { flex: 1, backgroundColor: '#000' },
+  avatarContainer: { position: 'absolute', zIndex: 1000 },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  avatarEmoji: { fontSize: 32 },
+  avatarLabel: { color: '#fff', fontSize: 10, fontWeight: '700', marginTop: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  historyLink: { fontSize: 14, color: '#0af', fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  statusText: { fontSize: 16, color: '#fff', marginLeft: 8 },
+  muted: { fontSize: 12, color: '#888', marginLeft: 8 },
+  error: { color: '#f33', padding: 16 },
+  ok: { color: '#0f0', marginLeft: 8 },
+  controls: { flexDirection: 'row', padding: 16 },
   button: {
-    backgroundColor: '#000',
+    backgroundColor: '#333',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 10,
     marginRight: 10,
   },
-  testButton: {
-    backgroundColor: '#333',
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  resultBox: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-  },
-  resultTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  micSection: { marginTop: 16, marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  testButton: { backgroundColor: '#222' },
+  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  speechSection: { flex: 1, padding: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: '#fff', marginBottom: 8 },
   micButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,16 +306,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 10,
   },
-  micActive: {
-    backgroundColor: '#0a0',
-  },
+  micActive: { backgroundColor: '#0a0' },
   micIcon: { fontSize: 20, marginRight: 8 },
-  transcriptBox: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  transcriptLabel: { fontSize: 12, color: '#666', marginBottom: 4 },
-  transcript: { fontSize: 14 },
+  transcriptBox: { marginTop: 12, padding: 12, backgroundColor: '#222', borderRadius: 8 },
+  transcriptLabel: { fontSize: 12, color: '#888', marginBottom: 4 },
+  transcript: { fontSize: 14, color: '#fff' },
+  resultBox: { margin: 16, padding: 12, backgroundColor: '#222', borderRadius: 8 },
+  resultTitle: { fontSize: 14, fontWeight: '700', color: '#fff', marginBottom: 8 },
 });
