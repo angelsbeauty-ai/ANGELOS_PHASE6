@@ -26,6 +26,11 @@
     },
     "android": {
       "package": "com.angelos.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "adf82555-9894-4426-87e7-5d84b662f4ac"
+      }
     }
   }
 }
