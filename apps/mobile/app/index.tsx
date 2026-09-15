@@ -223,6 +223,11 @@ export default function HomeScreen() {
             <PrimaryActionLabel>Ask AngelOS</PrimaryActionLabel>
           </Pressable>
         </Link>
+        <Link href="/voice" asChild>
+          <Pressable style={styles.actionLink}>
+            <SecondaryActionLabel>Open Voice Mode</SecondaryActionLabel>
+          </Pressable>
+        </Link>
       </Card>
 
       {needsConnection ? (
@@ -334,6 +339,7 @@ export default function HomeScreen() {
           <Link href="/automations" style={styles.moreLink}>Automations</Link>
           <Link href="/subscription" style={styles.moreLink}>Subscription</Link>
           <Link href="/beta-feedback" style={styles.moreLink}>Feedback</Link>
+          <Link href="/voice" style={styles.moreLink}>Voice Mode</Link>
           <Link href="/settings" style={styles.moreLink}>Settings</Link>
         </View>
       </Card>
