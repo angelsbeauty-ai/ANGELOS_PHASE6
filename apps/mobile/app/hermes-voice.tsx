@@ -1,85 +1,88 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { Screen } from '../src/components/Screen';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
+import * as LiveKit from 'livekit-client';
 
-const palette = {
-  background: '#09090b',
-  elevated: 'rgba(255,255,255,0.08)',
-  primaryText: '#fafafa',
-  secondaryText: '#a1a1aa',
-  border: 'rgba(255,255,255,0.16)',
-  gold: '#ffffff',
-  critical: '#f4f4f5',
-};
-
-const radius = { card: 18 };
-const spacing = { xs: 8, sm: 16, md: 24 };
-
-/**
- * Expo Go safe stub.
- * Do not import expo-av here: missing native ExponentAV crashes the whole JS bundle
- * when Expo Router evaluates this route module.
- * Restore recording UI behind a custom dev client later.
- */
 export default function HermesVoiceScreen() {
+  const { room, isConnecting, error, startSession, endSession } = useHermesVoiceLiveKit();
+  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
+
+  useEffect(() => {
+    if (!room) {
+      setStatus('idle');
+      return;
+    }
+
+    const onDisconnected = () => {
+      setStatus('idle');
+    };
+
+    room.on('disconnected', onDisconnected);
+    setStatus('connected');
+
+    return () => {
+      room.off('disconnected', onDisconnected);
+    };
+  }, [room]);
+
+  const handleToggle = async () => {
+    try {
+      if (room) {
+        await endSession();
+      } else {
+        await startSession({ language: 'auto', displayName: 'AngelOs user' });
+      }
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
   return (
-    <Screen style={styles.screen}>
-      <View style={styles.container}>
-        <Text style={styles.screenTitle}>Talk to Hermes</Text>
-        <Text style={styles.mutedText}>
-          Voice recording is paused in Expo Go so the rest of AngelOS can load.
-          Core screens (Home, Services, Calendar, Clients, Connections) still work.
-        </Text>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Voice paused for Expo Go</Text>
-          <Text style={styles.bodyText}>
-            Native module ExponentAV is not available in this Expo Go build.
-            Hermes voice will return in a development build.
-          </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Hermes Voice</Text>
+
+      {isConnecting && (
+        <View style={styles.row}>
+          <ActivityIndicator size="small" />
+          <Text style={styles.statusText}>Connecting…</Text>
         </View>
-      </View>
-    </Screen>
+      )}
+
+      {status === 'connected' && room && (
+        <View style={styles.row}>
+          <Text style={styles.statusText}>Live voice active</Text>
+          <Text style={styles.muted}>Room: {(room as any).name}</Text>
+        </View>
+      )}
+
+      {status === 'error' && error && (
+        <Text style={styles.error}>{error}</Text>
+      )}
+
+      {status === 'idle' && !isConnecting && (
+        <Text style={styles.muted}>Tap to start a voice conversation with Hermes</Text>
+      )}
+
+      <TouchableOpacity style={styles.button} onPress={handleToggle}>
+        <Text style={styles.buttonText}>{room ? 'End voice' : 'Start voice'}</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: palette.background,
+  container: { flex: 1, padding: 24, justifyContent: 'center' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  statusText: { fontSize: 16, marginLeft: 8 },
+  muted: { fontSize: 12, color: '#666', marginLeft: 8 },
+  error: { color: '#d33', marginBottom: 12 },
+  button: {
+    backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
   },
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-    gap: spacing.sm,
-  },
-  mutedText: {
-    color: palette.secondaryText,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: palette.primaryText,
-    marginBottom: spacing.xs,
-  },
-  card: {
-    gap: spacing.xs,
-    padding: spacing.sm,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.elevated,
-    marginTop: spacing.sm,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: palette.primaryText,
-  },
-  bodyText: {
-    fontSize: 16,
-    lineHeight: 23,
-    color: palette.secondaryText,
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
