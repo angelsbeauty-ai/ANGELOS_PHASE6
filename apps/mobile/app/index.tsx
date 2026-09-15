@@ -1,396 +1,47 @@
-import { Link, Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Screen } from '../src/components/Screen';
-import {
-  AppTitle,
-  BodyText,
-  Card,
-  Pill,
-  PrimaryActionLabel,
-  Row,
-  SecondaryActionLabel,
-  SectionTitle,
-  StatCard,
-  SupportText,
-  ui
-} from '../src/components/ui';
-import { getCalendar, listBusinessHours, listServices } from '../src/lib/bookings';
-import { listClients } from '../src/lib/clients';
-import { getSystemHealth, type SystemHealthOverview } from '../src/lib/system-health';
-import { getActiveWorkspace } from '../src/lib/workspace';
-import { getClientControlReviewQueue, getLineConnectionStatus, getMetaConnectionStatus } from '../src/lib/messaging';
-import { supabase } from '../src/lib/supabase';
-
-type SetupSnapshot = {
-  serviceCount: number;
-  hoursCount: number;
-  clientCount: number;
-  todayAppointments: number;
-  workspaceReady: boolean;
-  pendingApprovals: number;
-  lineReady: boolean;
-  instagramReady: boolean;
-};
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  const [health, setHealth] = useState<SystemHealthOverview | null>(null);
-  const [setup, setSetup] = useState<SetupSnapshot | null>(null);
-  const [sessionReady, setSessionReady] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      const signedIn = Boolean(data.session);
-      setIsSignedIn(signedIn);
-      setSessionReady(true);
-      if (signedIn) {
-        void loadDashboard();
-      }
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      const signedIn = Boolean(session);
-      setIsSignedIn(signedIn);
-      setSessionReady(true);
-      if (signedIn) {
-        void loadDashboard();
-      }
-    });
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  async function loadDashboard() {
-    try {
-      const workspace = await getActiveWorkspace();
-      const start = startOfToday();
-      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-      const [healthOverview, services, hours, clients, calendar, reviewQueue, lineStatus, metaStatus] = await Promise.all([
-        getSystemHealth(workspace.id).catch(() => null),
-        listServices(workspace.id).catch(() => []),
-        listBusinessHours(workspace.id).catch(() => []),
-        listClients(workspace.id).catch(() => []),
-        getCalendar(workspace.id, start.toISOString(), end.toISOString()).catch(() => ({
-          appointments: [],
-          blocks: []
-        })),
-        getClientControlReviewQueue(workspace.id).catch(() => ({ ok: false, items: [] })),
-        getLineConnectionStatus(workspace.id).catch(() => null),
-        getMetaConnectionStatus(workspace.id).catch(() => null)
-      ]);
-      setHealth(healthOverview);
-      setSetup({
-        serviceCount: services.length,
-        hoursCount: hours.length,
-        clientCount: clients.length,
-        todayAppointments: calendar.appointments.length,
-        workspaceReady: true,
-        pendingApprovals: Array.isArray(reviewQueue?.items) ? reviewQueue.items.length : 0,
-        lineReady: Boolean(
-          lineStatus?.connection?.tokenPresent &&
-          lineStatus.connection.status === 'active' &&
-          !lineStatus.connection.expired
-        ),
-        instagramReady: Boolean(
-          (metaStatus?.connections || []).some(
-            (c) => (c.provider === 'instagram' || c.provider === 'meta_instagram') && c.tokenPresent && c.status === 'active' && !c.expired
-          )
-        )
-      });
-    } catch {
-      setHealth(null);
-      setSetup({
-        serviceCount: 0,
-        hoursCount: 0,
-        clientCount: 0,
-        todayAppointments: 0,
-        workspaceReady: false,
-        pendingApprovals: 0,
-        lineReady: false,
-        instagramReady: false
-      });
-    }
-  }
-
-  if (!sessionReady) {
-    return (
-      <Screen>
-        <SupportText>Loading AngelOS...</SupportText>
-      </Screen>
-    );
-  }
-  if (!isSignedIn) {
-    return <Redirect href="/login" />;
-  }
-
-  const attentionCount = health ? health.counts.urgent + health.counts.today + health.counts.later : 0;
-  const needsServices = Boolean(setup?.workspaceReady && setup.serviceCount === 0);
-  const needsHours = Boolean(setup?.workspaceReady && setup.hoursCount < 7);
-  const needsClient = Boolean(setup?.workspaceReady && setup.clientCount === 0);
-  const needsConnection = Boolean(setup?.workspaceReady && !setup.lineReady && !setup.instagramReady);
-  const pendingApprovals = setup?.pendingApprovals ?? 0;
-  const needsSetup = needsServices || needsHours || needsClient || setup?.workspaceReady === false;
+  const router = useRouter();
 
   return (
-    <Screen>
-      <View style={styles.hero}>
-        <Pill tone="gold">Owner Dashboard</Pill>
-        <AppTitle>AngelOS</AppTitle>
-        <SupportText>Clients, bookings, content and system health in one calm place.</SupportText>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>AngelOs</Text>
+      <Text style={styles.subtitle}>Your salon operating system</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>AI Assistant</Text>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push('/hermes-onboarding')}
+        >
+          <Text style={styles.cardTitle}>Hermes Voice</Text>
+          <Text style={styles.cardDesc}>Talk to Hermes in Japanese. Real-time voice with memory.</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.statsGrid}>
-        <StatCard
-          label="Appointments"
-          value={setup ? String(setup.todayAppointments) : '--'}
-          detail={setup ? 'On the calendar today' : 'Loading today...'}
-        />
-
-        <StatCard
-          label="Approvals"
-          value={setup ? String(setup.pendingApprovals) : '--'}
-          detail={setup ? 'Waiting for your decision' : 'Loading approvals...'}
-        />
-        <StatCard
-          label="Attention"
-          value={health ? `${attentionCount}` : '--'}
-          detail={health ? 'Items to review' : 'Check workspace health'}
-        />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>More coming soon</Text>
+        <Text style={styles.muted}>Additional AngelOs features will appear here.</Text>
       </View>
-
-      <Card premium>
-        <Pill tone="gold">Staging walk</Pill>
-        <SectionTitle>Live counts from staging</SectionTitle>
-        <SupportText>
-          Services: {setup ? String(setup.serviceCount) : '--'} | Hours days: {setup ? String(setup.hoursCount) : '--'} | Clients: {setup ? String(setup.clientCount) : '--'} | Today bookings: {setup ? String(setup.todayAppointments) : '--'}
-        </SupportText>
-        <SupportText>
-          Doorways: LINE {setup?.lineReady ? 'ready' : 'waiting on credentials'} · Instagram {setup?.instagramReady ? 'ready' : 'waiting on credentials'}
-        </SupportText>
-        <SupportText>Meta publish stays closed. Live LINE Agent is not cut over from Connections.</SupportText>
-      </Card>
-
-      {needsSetup ? (
-        <Card premium>
-          <Pill tone="warning">First-run setup</Pill>
-          <SectionTitle>Finish your salon basics</SectionTitle>
-          <SupportText>
-            {!setup?.workspaceReady
-              ? 'Create your business workspace first (Onboarding), then add services, hours and one client.'
-              : 'AngelOS needs real services, open hours and at least one client before bookings feel usable.'}
-          </SupportText>
-          {!setup?.workspaceReady ? (
-            <Link href="/onboarding" asChild>
-              <Pressable style={styles.actionLink}>
-                <PrimaryActionLabel>Open onboarding</PrimaryActionLabel>
-              </Pressable>
-            </Link>
-          ) : null}
-          {needsServices || needsHours ? (
-            <Link href="/services" asChild>
-              <Pressable style={styles.actionLink}>
-                <PrimaryActionLabel>
-                  {needsServices ? 'Set up services and hours' : 'Set business hours'}
-                </PrimaryActionLabel>
-              </Pressable>
-            </Link>
-          ) : null}
-          {needsClient ? (
-            <Link href="/clients/new" asChild>
-              <Pressable style={styles.actionLink}>
-                <PrimaryActionLabel>Add your first client</PrimaryActionLabel>
-              </Pressable>
-            </Link>
-          ) : null}
-        </Card>
-      ) : null}
-
-      <Card premium>
-        <View style={styles.cardHeader}>
-          <SectionTitle>AngelOS Assistant</SectionTitle>
-          <Pill>AI ready</Pill>
-        </View>
-        <BodyText>
-          Ask what needs attention, draft a client reply, prepare content, or review today schedule.
-        </BodyText>
-        <Link href="/ai" asChild>
-          <Pressable style={styles.actionLink}>
-            <PrimaryActionLabel>Ask AngelOS</PrimaryActionLabel>
-          </Pressable>
-        </Link>
-        <Link href="/voice" asChild>
-          <Pressable style={styles.actionLink}>
-            <SecondaryActionLabel>Open Voice Mode</SecondaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      {needsConnection ? (
-        <Card premium>
-          <Pill tone="warning">Secure doorways</Pill>
-          <SectionTitle>Connect LINE or Instagram</SectionTitle>
-          <SupportText>Home shows real connection status from staging. Meta public publish stays closed. LINE connect does not cut over the live Agent.</SupportText>
-          <Link href="/connections" asChild>
-            <Pressable style={styles.rowLink}>
-              <PrimaryActionLabel>Open Connections</PrimaryActionLabel>
-            </Pressable>
-          </Link>
-        </Card>
-      ) : null}
-
-      <Card>
-        <SectionTitle>Needs Attention</SectionTitle>
-        <BodyText>
-          {health
-            ? attentionCount
-              ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need review before AngelOS acts.`
-              : 'Nothing currently needs your attention.'
-            : 'Run a System Health check to verify your workspace.'}
-        </BodyText>
-        <Link href="/system-health" asChild>
-          <Pressable style={styles.actionLink}>
-            <SecondaryActionLabel>Open System Health</SecondaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card premium>
-        <View style={styles.cardHeader}>
-          <SectionTitle>Approvals</SectionTitle>
-          <Pill tone="gold">Owner only</Pill>
-        </View>
-        <BodyText>
-          Review client replies, content and bookings before AngelOS sends or publishes anything.
-        </BodyText>
-        <Link href="/approvals" asChild>
-          <Pressable style={styles.actionLink}>
-            <PrimaryActionLabel>Open Approvals</PrimaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card premium>
-        <SectionTitle>Hermes / Planner</SectionTitle>
-        <BodyText>Review pending approvals and attention items in one place.</BodyText>
-        <Link href="./hermes" asChild>
-          <Pressable accessibilityRole="link" style={styles.actionLink}>
-            <PrimaryActionLabel>Open Hermes / Planner</PrimaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card>
-        <SectionTitle>Run Today</SectionTitle>
-        <View>
-          <Link href="/calendar" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Calendar</BodyText>
-                <SupportText>Bookings, models, classes and conflicts</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/services" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Services</BodyText>
-                <SupportText>Timing, prices and open hours</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/clients" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Clients</BodyText>
-                <SupportText>Profiles, notes and treatment history</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/messages" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Messages</BodyText>
-                <SupportText>Drafts, translation and booking handoff</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/content" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Content</BodyText>
-                <SupportText>AI recommendation, approval and publishing</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-        </View>
-      </Card>
-
-      <Card>
-        <SectionTitle>Tools and Controls</SectionTitle>
-        <View style={styles.moreGrid}>
-          <Link href="/media" style={styles.moreLink}>Media</Link>
-          <Link href="/analytics" style={styles.moreLink}>Analytics</Link>
-          <Link href="/finance" style={styles.moreLink}>Finance</Link>
-          <Link href="/automations" style={styles.moreLink}>Automations</Link>
-          <Link href="/subscription" style={styles.moreLink}>Subscription</Link>
-          <Link href="/beta-feedback" style={styles.moreLink}>Feedback</Link>
-          <Link href="/voice" style={styles.moreLink}>Voice Mode</Link>
-          <Link href="/settings" style={styles.moreLink}>Settings</Link>
-        </View>
-      </Card>
-    </Screen>
+    </ScrollView>
   );
 }
 
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 const styles = StyleSheet.create({
-  hero: {
-    gap: ui.spacing.xs
+  container: { flexGrow: 1, padding: 24 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, color: '#666', marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+  card: {
+    backgroundColor: '#f5f5f5',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 10,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: ui.spacing.sm
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ui.spacing.sm
-  },
-  actionLink: {
-    marginTop: ui.spacing.xs
-  },
-  rowLink: {},
-  chevron: {
-    color: ui.colors.gold,
-    fontSize: 26,
-    lineHeight: 28
-  },
-  moreGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ui.spacing.xs
-  },
-  moreLink: {
-    minHeight: 40,
-    paddingVertical: 10,
-    paddingHorizontal: ui.spacing.sm,
-    borderRadius: ui.radius.pill,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    color: ui.colors.primaryText,
-    backgroundColor: ui.colors.elevated,
-    fontSize: 14,
-    fontWeight: '700'
-  }
+  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  cardDesc: { fontSize: 14, color: '#444' },
+  muted: { fontSize: 14, color: '#888' },
 });
