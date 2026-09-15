@@ -25,13 +25,54 @@ export class AiService {
   async getProfile(user: AuthUser, workspaceId: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
     const [{ data: profile, error: profileError }, { data: roles, error: rolesError }] = await Promise.all([
-      supabase.from('ai_assistant_profiles').select('*').eq('workspace_id', workspaceId).single(),
+      supabase.from('ai_assistant_profiles').select('*').eq('workspace_id', workspaceId).maybeSingle(),
       supabase.from('ai_assistant_roles').select('role_key,enabled').eq('workspace_id', workspaceId).order('role_key')
     ]);
 
-    if (profileError || !profile) throw new NotFoundException('Assistant profile not found for workspace');
     if (rolesError) throw new InternalServerErrorException(rolesError.message);
-    return { profile, roles: roles ?? [] };
+
+    if (profileError) throw new InternalServerErrorException(profileError.message);
+    if (profile) return { profile, roles: roles ?? [] };
+
+    const { data: created, error: createError } = await supabase
+      .from('ai_assistant_profiles')
+      .insert({
+        workspace_id: workspaceId,
+        display_name: 'AngelOS',
+        personality_prompt: 'Warm, calm, concise and practical. Never invents prices, hours or medical advice.'
+      })
+      .select('*')
+      .single();
+    if (createError || !created) {
+      throw new InternalServerErrorException(createError?.message ?? 'Could not create assistant profile');
+    }
+
+    const roleKeys = [
+      'personal_assistant',
+      'social_media_marketer',
+      'content_creator',
+      'business_manager',
+      'business_advisor',
+      'consultant'
+    ];
+    const { error: roleError } = await supabase.from('ai_assistant_roles').upsert(
+      roleKeys.map((role_key) => ({
+        workspace_id: workspaceId,
+        role_key,
+        enabled: true,
+        updated_at: new Date().toISOString()
+      })),
+      { onConflict: 'workspace_id,role_key' }
+    );
+    if (roleError) throw new InternalServerErrorException(roleError.message);
+
+    const { data: seededRoles, error: seededRolesError } = await supabase
+      .from('ai_assistant_roles')
+      .select('role_key,enabled')
+      .eq('workspace_id', workspaceId)
+      .order('role_key');
+    if (seededRolesError) throw new InternalServerErrorException(seededRolesError.message);
+    return { profile: created, roles: seededRoles ?? [] };
   }
 
   async updateProfile(user: AuthUser, workspaceId: string, dto: UpdateAssistantProfileDto) {
