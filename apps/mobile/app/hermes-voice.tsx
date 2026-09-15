@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
+import { useSpeechToText } from '../src/lib/useSpeechToText';
 import * as LiveKit from 'livekit-client';
 
 const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
@@ -8,10 +9,11 @@ const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
 
 export default function HermesVoiceScreen() {
   const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
+  const { isListening, transcript, error: sttError, startListening, stopListening, setTranscript } = useSpeechToText({ language: 'ja-JP' });
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
   const [testResult, setTestResult] = useState<any | null>(null);
   const [testing, setTesting] = useState(false);
-  const [userText, setUserText] = useState('');
+  const [lastSent, setLastSent] = useState('');
 
   useEffect(() => {
     if (!room) {
@@ -30,6 +32,15 @@ export default function HermesVoiceScreen() {
       room.off('disconnected', onDisconnected);
     };
   }, [room]);
+
+  // Auto-send transcript when user stops speaking
+  useEffect(() => {
+    if (!room || !transcript || transcript === lastSent) return;
+    if (!isListening && transcript.trim().length > 0) {
+      sendUserSpeech(transcript);
+      setLastSent(transcript);
+    }
+  }, [isListening, transcript, room]);
 
   const handleToggle = async () => {
     try {
@@ -61,12 +72,13 @@ export default function HermesVoiceScreen() {
     }
   };
 
-  const sendUserSpeech = async () => {
-    if (!room || !userText.trim()) return;
+  const sendUserSpeech = async (text: string) => {
+    if (!room || !text.trim()) return;
     try {
-      const payload = { type: 'user-speech', text: userText.trim() };
+      const payload = { type: 'user-speech', text: text.trim() };
       await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(payload)), { topic: 'chat' });
-      setUserText('');
+      setTranscript('');
+      setLastSent('');
     } catch (e) {
       console.error('Send speech error:', e);
     }
@@ -121,17 +133,26 @@ export default function HermesVoiceScreen() {
       </View>
 
       {status === 'connected' && (
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Type what you said (for testing)"
-            value={userText}
-            onChangeText={setUserText}
-            multiline
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={sendUserSpeech}>
-            <Text style={styles.buttonText}>Send</Text>
-          </TouchableOpacity>
+        <View style={styles.micSection}>
+          <Text style={styles.label}>Speak to Hermes</Text>
+          <View style={styles.row}>
+            <TouchableOpacity
+              style={[styles.micButton, isListening ? styles.micActive : {}]}
+              onPress={isListening ? stopListening : startListening}
+            >
+              <Text style={styles.micIcon}>{isListening ? '🎤' : '🎙️'}</Text>
+              <Text style={styles.buttonText}>{isListening ? 'Listening…' : 'Tap to speak'}</Text>
+            </TouchableOpacity>
+          </View>
+          {transcript ? (
+            <View style={styles.transcriptBox}>
+              <Text style={styles.transcriptLabel}>You said:</Text>
+              <Text style={styles.transcript}>{transcript}</Text>
+            </View>
+          ) : (
+            <Text style={styles.muted}>Your speech will appear here</Text>
+          )}
+          {sttError && <Text style={styles.error}>STT: {sttError}</Text>}
         </View>
       )}
 
@@ -189,22 +210,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   resultTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  inputRow: { marginTop: 12, marginBottom: 12 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  sendButton: {
-    backgroundColor: '#000',
+  micSection: { marginTop: 16, marginBottom: 12 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  micButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#222',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 10,
-    marginLeft: 8,
   },
+  micActive: {
+    backgroundColor: '#0a0',
+  },
+  micIcon: { fontSize: 20, marginRight: 8 },
+  transcriptBox: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  transcriptLabel: { fontSize: 12, color: '#666', marginBottom: 4 },
+  transcript: { fontSize: 14 },
 });
