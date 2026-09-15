@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -8,8 +8,30 @@ export default function AISettingsScreen() {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [autoSuggestions, setAutoSuggestions] = useState(true);
   const [voiceMode, setVoiceMode] = useState('hermes');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const [ai, suggestions, voice] = await AsyncStorage.multiGet([
+        'ai_enabled',
+        'ai_auto_suggestions',
+        'ai_voice_mode'
+      ]);
+      
+      if (ai[1] !== null) setAiEnabled(ai[1] === 'true');
+      if (suggestions[1] !== null) setAutoSuggestions(suggestions[1] === 'true');
+      if (voice[1] !== null) setVoiceMode(voice[1]);
+    } catch (error) {
+      console.log('Load settings error (expected):', error);
+    }
+  };
 
   const handleSave = async () => {
+    setLoading(true);
     try {
       await AsyncStorage.multiSet([
         ['ai_enabled', String(aiEnabled)],
@@ -19,6 +41,8 @@ export default function AISettingsScreen() {
       alert('Settings saved!');
     } catch (error) {
       console.error('Save error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,6 +55,13 @@ export default function AISettingsScreen() {
         <Text style={styles.title}>AI Settings</Text>
         <View style={styles.placeholder} />
       </View>
+
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Saving...</Text>
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>AI Assistant</Text>
@@ -88,6 +119,8 @@ const styles = StyleSheet.create({
   backButton: { fontSize: 28, color: '#f1f5f9' },
   title: { fontSize: 22, fontWeight: '600', color: '#f1f5f9' },
   placeholder: { width: 28 },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  loadingText: { color: '#f1f5f9', marginTop: 12, fontSize: 16 },
   section: { padding: 16, marginTop: 8 },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#94a3b8', marginBottom: 16 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
