@@ -205,7 +205,16 @@ export default function AiScreen() {
         </Pressable>
       </Card>
 
-      <SupportText>Voice capture is still waiting on the device adapter; text uses the same assistant and approval system.</SupportText>
+      <Card>
+        <SectionTitle>Voice Mode</SectionTitle>
+        <BodyText>Hold to talk, release to send. Communication, marketing, advisor and manager skills live here — not in Hermes.</BodyText>
+        <Link href="/voice" asChild>
+          <Pressable>
+            <Text style={styles.settingsLink}>Open Voice Mode</Text>
+          </Pressable>
+        </Link>
+      </Card>
+      <SupportText>Microphone capture stays paused in Expo Go. Text uses the same assistant and approval system.</SupportText>
     </Screen>
   );
 }
