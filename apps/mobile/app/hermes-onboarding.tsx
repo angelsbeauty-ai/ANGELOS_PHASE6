@@ -8,7 +8,7 @@ export default function HermesOnboardingScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.hero}>
-        <Text style={styles.heroIcon}>🎙️</Text>
+        <Text style={styles.heroIcon}>🤖</Text>
         <Text style={styles.title}>Talk to Hermes</Text>
         <Text style={styles.subtitle}>Your AI assistant for AngelOs</Text>
       </View>
@@ -16,6 +16,7 @@ export default function HermesOnboardingScreen() {
       <View style={styles.features}>
         <Feature title="Voice first" desc="Speak naturally in Japanese. Hermes listens and replies by voice." />
         <Feature title="Remembers you" desc="Hermes recalls past conversations so you don't have to repeat yourself." />
+        <Feature title="Draggable avatar" desc="Move Hermes around the screen. Tap to interact." />
         <Feature title="Always available" desc="Tap once and start talking anytime you need help." />
       </View>
 
