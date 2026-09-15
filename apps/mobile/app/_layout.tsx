@@ -6,14 +6,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-export const colors = {
-  primary: '#0ea5e9',
-  background: '#0f172a',
-  card: '#1e293b',
-  text: '#f1f5f9',
-  border: '#334155',
-  notification: '#ef4444',
-};
+export {
+  ErrorBoundary,
+} from 'expo-router';
+
+export const unstable_settings = { initialRouteName: '(tabs)' };
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -22,24 +21,27 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, error]);
+    if (error) throw error;
+  }, [error]);
 
-  if (!loaded && !error) {
-    return null;
-  }
+  useEffect(() => {
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
 
+  if (!loaded) return null;
+
+  return <RootLayoutNav />;
+}
+
+function RootLayoutNav() {
   return (
     <ThemeProvider value={DarkTheme}>
       <Stack>
-        <Stack.Screen name="index" options={{ title: 'AngelOs', headerShown: false }} />
-        <Stack.Screen name="hermes-voice" options={{ title: 'Hermes Voice', headerShown: false }} />
-        <Stack.Screen name="hermes-settings" options={{ title: 'Settings', headerShown: false }} />
-        <Stack.Screen name="hermes-history" options={{ title: 'History', headerShown: false }} />
-        <Stack.Screen name="ai-settings" options={{ title: 'AI Settings', headerShown: false }} />
-        <Stack.Screen name="approvals" options={{ title: 'Approvals', headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="ai-settings" options={{ title: 'AI Settings', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
+        <Stack.Screen name="approvals" options={{ title: 'Approvals', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
+        <Stack.Screen name="hermes-voice" options={{ title: 'Hermes Voice', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
+        <Stack.Screen name="system-check" options={{ title: 'System Check', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
       </Stack>
     </ThemeProvider>
   );
