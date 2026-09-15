@@ -1,4 +1,4 @@
-// HTTP server that starts a Hermes agent in a given LiveKit room.
+// Hermes voice agent HTTP server with real audio streaming into LiveKit room.
 // POST /join { "roomName": "..." }
 // Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT (default 8787)
 
@@ -7,8 +7,7 @@ import { AccessToken } from 'livekit-server-sdk';
 import OpenAI from 'openai';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { createWriteStream } from 'fs';
-import { spawn } from 'child_process';
+import { createWriteStream, createReadStream, unlinkSync } from 'fs';
 
 const url = process.env.LIVEKIT_URL;
 const apiKey = process.env.LIVEKIT_API_KEY;
@@ -26,7 +25,45 @@ const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in 
 
 console.log('Hermes voice agent HTTP server starting on port', port);
 
-const { Room } = await import('livekit-client');
+// Dynamic import for livekit-client (ESM)
+const { Room, createAudioTrack, AudioPresets } = await import('livekit-client');
+
+async function speakAndPublish(room, text) {
+  console.log('Hermes:', text);
+
+  // Get TTS audio as stream
+  const tts = await openai.audio.speech.create({
+    model: 'tts-1',
+    voice: 'alloy',
+    input: text,
+    response_format: 'pcm',
+  });
+
+  const file = join(tmpdir(), `hermes-${Date.now()}.pcm`);
+  const writer = createWriteStream(file);
+
+  for await (const chunk of tts.body) {
+    writer.write(chunk);
+  }
+  writer.end();
+  await new Promise((res) => writer.on('finish', res));
+
+  // Read PCM and publish as audio track
+  const audioStream = createReadStream(file, { highWaterMark: 16384 });
+  const audioTrack = createAudioTrack(
+    'hermes-audio',
+    audioStream,
+    { source: 'microphone', sampleRate: 24000, channelCount: 1 } // LiveKit default
+  );
+
+  await room.localParticipant.publishTrack(audioTrack, { name: 'hermes-speech' });
+  console.log('Published audio track for:', text);
+
+  audioStream.on('end', () => {
+    console.log('Finished playing audio for:', text);
+    unlinkSync(file);
+  });
+}
 
 async function runAgentInRoom(roomName) {
   console.log('Starting agent in room:', roomName);
@@ -40,8 +77,8 @@ async function runAgentInRoom(roomName) {
   await room.connect(url, jwt, { autoSubscribe: true });
   console.log('Agent joined room:', roomName);
 
-  // Simulated conversation loop (replace with real STT later).
-  const initialReply = await openai.chat.completions.create({
+  // Initial greeting
+  const greeting = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: HERMES_SYSTEM },
@@ -50,18 +87,10 @@ async function runAgentInRoom(roomName) {
     temperature: 0.3,
     max_tokens: 40,
   });
-  const text = initialReply.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
-  console.log('Hermes:', text);
+  const text = greeting.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
+  await speakAndPublish(room, text);
 
-  const tts = await openai.audio.speech.create({ model: 'tts-1', voice: 'alloy', input: text });
-  const file = join(tmpdir(), `hermes-${Date.now()}.mp3`);
-  const writer = createWriteStream(file);
-  for await (const chunk of tts.body) writer.write(chunk);
-  writer.end();
-  await new Promise((res) => writer.on('finish', res));
-  console.log('TTS audio written to:', file);
-
-  // Keep the agent alive for a few minutes, then leave.
+  // Keep agent alive for a few minutes, then leave
   setTimeout(async () => {
     console.log('Agent leaving room:', roomName);
     await room.disconnect();
@@ -84,7 +113,7 @@ createServer(async (req, res) => {
         if (!roomName) throw new Error('Missing roomName');
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ status: 'ok', room: roomName }));
-        await runAgentInRoom(roomName);
+        await runAgentInRoom(roomName).catch((e) => console.error('Agent error:', e));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ error: e?.message || String(e) }));
