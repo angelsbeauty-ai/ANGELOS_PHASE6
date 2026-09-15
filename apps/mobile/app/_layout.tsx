@@ -1,9 +1,11 @@
 import { UsageTracker } from '../src/components/UsageTracker';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/design/theme';
 
 export default function RootLayout() {
   return <>
+    <StatusBar style="light" />
     <UsageTracker />
     <Stack screenOptions={{
       headerTitleAlign: 'center',
