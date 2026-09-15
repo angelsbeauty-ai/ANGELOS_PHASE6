@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, PanResponder } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import { useSpeechToText } from '../src/lib/useSpeechToText';
 import * as LiveKit from 'livekit-client';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SUPABASE_URL = 'https://hhzegavoyuicclsmrkwf.supabase.co';
 const VOICE_ENDPOINT = `${SUPABASE_URL}/functions/v1/api/ai/voice/session`;
@@ -18,7 +19,6 @@ export default function HermesVoiceScreen() {
   const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
   const [showTutorial, setShowTutorial] = useState(true);
 
-  // Draggable avatar
   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH / 2 - 40, y: SCREEN_HEIGHT / 2 })).current;
   const scale = useRef(new Animated.Value(1)).current;
   const panResponder = useRef(
@@ -33,19 +33,13 @@ export default function HermesVoiceScreen() {
     })
   ).current;
 
-  // Pulse animation when speaking
   useEffect(() => {
-    if (agentState === 'speaking') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scale, { toValue: 1.2, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(scale, { toValue: 1, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      ).start();
-    } else {
-      scale.setValue(1);
-    }
-  }, [agentState]);
+    const checkTutorial = async () => {
+      const seen = await AsyncStorage.getItem('hermes_tutorial_seen');
+      if (seen === 'true') setShowTutorial(false);
+    };
+    checkTutorial();
+  }, []);
 
   useEffect(() => {
     if (!room) {
@@ -56,7 +50,8 @@ export default function HermesVoiceScreen() {
     setStatus('connected');
   }, [room]);
 
-  // Auto-send transcript
+  const [lastSent, setLastSent] = useState('');
+
   useEffect(() => {
     if (!room || !transcript || transcript === lastSent) return;
     if (!isListening && transcript.trim().length > 0) {
@@ -67,8 +62,6 @@ export default function HermesVoiceScreen() {
       setTimeout(() => setAgentState('idle'), 2500);
     }
   }, [isListening, transcript, room]);
-
-  const [lastSent, setLastSent] = useState('');
 
   const handleToggle = async () => {
     try {
@@ -102,6 +95,11 @@ export default function HermesVoiceScreen() {
     }
   };
 
+  const handleTutorialDismiss = async () => {
+    await AsyncStorage.setItem('hermes_tutorial_seen', 'true');
+    setShowTutorial(false);
+  };
+
   const getAvatarEmoji = () => {
     switch (agentState) {
       case 'listening': return '👂';
@@ -122,28 +120,24 @@ export default function HermesVoiceScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Tutorial Overlay */}
       {showTutorial && (
         <View style={styles.tutorialOverlay}>
           <View style={styles.tutorialBox}>
             <Text style={styles.tutorialTitle}>👋 Welcome!</Text>
-            <Text style={styles.tutorialText}>Drag Hermes around the screen</Text>
-            <Text style={styles.tutorialText}>Tap Hermes to make it listen</Text>
+            <Text style={styles.tutorialText}>Drag Hermes around</Text>
+            <Text style={styles.tutorialText}>Tap to make it listen</Text>
             <Text style={styles.tutorialText}>Speak in Japanese</Text>
-            <TouchableOpacity style={styles.tutorialButton} onPress={() => setShowTutorial(false)}>
+            <TouchableOpacity style={styles.tutorialButton} onPress={handleTutorialDismiss}>
               <Text style={styles.tutorialButtonText}>Got it!</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Draggable Hermes Avatar */}
       <Animated.View
         style={[
           styles.avatarContainer,
-          {
-            transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }],
-          },
+          { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] },
         ]}
         {...panResponder.panHandlers}
       >
@@ -157,15 +151,18 @@ export default function HermesVoiceScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Hermes Voice</Text>
-        <TouchableOpacity onPress={() => router.push('/hermes-history')}>
-          <Text style={styles.historyLink}>History</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>Hermes</Text>
+        <View style={styles.headerLinks}>
+          <TouchableOpacity onPress={() => router.push('/hermes-settings')}>
+            <Text style={styles.headerLink}>⚙️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/hermes-history')}>
+            <Text style={styles.headerLink}>📋</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Status */}
       {isConnecting && (
         <View style={styles.row}>
           <ActivityIndicator size="small" />
@@ -175,18 +172,16 @@ export default function HermesVoiceScreen() {
 
       {status === 'connected' && agentJoined && (
         <View style={styles.row}>
-          <Text style={styles.ok}>● Hermes agent connected</Text>
+          <Text style={styles.ok}>● Connected</Text>
         </View>
       )}
 
-      {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity style={styles.button} onPress={handleToggle}>
           <Text style={styles.buttonText}>{room ? 'End' : 'Start'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Speech */}
       {status === 'connected' && (
         <View style={styles.speechSection}>
           {transcript ? (
@@ -205,28 +200,29 @@ export default function HermesVoiceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
-  tutorialBox: { backgroundColor: '#222', padding: 24, borderRadius: 16, maxWidth: 300 },
-  tutorialTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 16, textAlign: 'center' },
-  tutorialText: { fontSize: 14, color: '#ccc', marginBottom: 8, textAlign: 'center' },
-  tutorialButton: { backgroundColor: '#0a0', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, marginTop: 16 },
-  tutorialButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
+  tutorialBox: { backgroundColor: '#111', padding: 28, borderRadius: 20, maxWidth: 320, borderWidth: 2, borderColor: '#333' },
+  tutorialTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 16, textAlign: 'center' },
+  tutorialText: { fontSize: 15, color: '#aaa', marginBottom: 10, textAlign: 'center' },
+  tutorialButton: { backgroundColor: '#0a0', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
+  tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
   avatarContainer: { position: 'absolute', zIndex: 1000 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.5, shadowRadius: 10, elevation: 10 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
   avatarEmoji: { fontSize: 32 },
   avatarLabel: { color: '#fff', fontSize: 10, fontWeight: '700', marginTop: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
   title: { fontSize: 24, fontWeight: '700', color: '#fff' },
-  historyLink: { fontSize: 14, color: '#0af', fontWeight: '600' },
+  headerLinks: { flexDirection: 'row', gap: 16 },
+  headerLink: { fontSize: 20 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   statusText: { fontSize: 16, color: '#fff', marginLeft: 8 },
-  muted: { fontSize: 14, color: '#888' },
-  ok: { color: '#0f0' },
+  muted: { fontSize: 14, color: '#666' },
+  ok: { color: '#0f0', fontSize: 15, fontWeight: '600' },
   controls: { padding: 16 },
-  button: { backgroundColor: '#333', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 10 },
-  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  button: { backgroundColor: '#222', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12 },
+  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   speechSection: { flex: 1, padding: 16 },
-  transcriptBox: { padding: 12, backgroundColor: '#222', borderRadius: 8 },
-  transcriptLabel: { fontSize: 12, color: '#888', marginBottom: 4 },
-  transcript: { fontSize: 14, color: '#fff' },
+  transcriptBox: { padding: 16, backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#222' },
+  transcriptLabel: { fontSize: 12, color: '#666', marginBottom: 6 },
+  transcript: { fontSize: 15, color: '#fff' },
 });
