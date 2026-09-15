@@ -16,7 +16,7 @@ export default function HermesHistoryScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Hermes History</Text>
+        <Text style={styles.title}>History</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -44,20 +44,20 @@ export default function HermesHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#121212', padding: 16 },
+  container: { flexGrow: 1, backgroundColor: '#0f172a', padding: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20 },
-  backButton: { fontSize: 28, color: '#fff' },
-  title: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  backButton: { fontSize: 28, color: '#f1f5f9' },
+  title: { fontSize: 22, fontWeight: '600', color: '#f1f5f9' },
   placeholder: { width: 28 },
   section: { marginTop: 24 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#aaa', marginBottom: 16 },
-  sessionCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e1e1e', padding: 16, borderRadius: 12, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#94a3b8', marginBottom: 16 },
+  sessionCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
   sessionInfo: { flex: 1 },
-  sessionTopic: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 4 },
-  sessionDate: { fontSize: 13, color: '#888' },
+  sessionTopic: { fontSize: 16, fontWeight: '600', color: '#f1f5f9', marginBottom: 4 },
+  sessionDate: { fontSize: 13, color: '#94a3b8' },
   sessionMeta: { flexDirection: 'row', alignItems: 'center' },
-  sessionDuration: { fontSize: 13, color: '#666', marginRight: 12 },
-  sessionArrow: { fontSize: 18, color: '#666' },
-  clearButton: { backgroundColor: '#2a2a2a', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24 },
-  clearButtonText: { fontSize: 15, color: '#f44', fontWeight: '600' },
+  sessionDuration: { fontSize: 13, color: '#64748b', marginRight: 12 },
+  sessionArrow: { fontSize: 18, color: '#64748b' },
+  clearButton: { backgroundColor: '#1e293b', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, borderWidth: 1, borderColor: '#ef4444' },
+  clearButtonText: { fontSize: 15, color: '#ef4444', fontWeight: '600' },
 });

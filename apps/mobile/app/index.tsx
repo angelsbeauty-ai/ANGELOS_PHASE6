@@ -7,18 +7,18 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const features = [
-    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice', color: ['#0a0', '#0a0'] },
-    { name: 'Planner', icon: '📅', route: '/hermes-planner', color: ['#00a', '#00a'] },
-    { name: 'History', icon: '📋', route: '/hermes-history', color: ['#a0a', '#a0a'] },
-    { name: 'Settings', icon: '⚙️', route: '/hermes-settings', color: ['#666', '#888'] },
+    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice', color: ['#0ea5e920', '#0ea5e910'] },
+    { name: 'Planner', icon: '📅', route: '/hermes-planner', color: ['#10b98120', '#10b98110'] },
+    { name: 'History', icon: '📋', route: '/hermes-history', color: ['#8b5cf620', '#8b5cf610'] },
+    { name: 'Settings', icon: '⚙️', route: '/hermes-settings', color: ['#64748b20', '#64748b10'] },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <LinearGradient colors={['#1a1a2e', '#0f0f1a']} style={styles.header}>
+      <View style={styles.header}>
         <Text style={styles.title}>AngelOs</Text>
-        <Text style={styles.subtitle}>Your AI Operating System</Text>
-      </LinearGradient>
+        <Text style={styles.subtitle}>AI Operating System</Text>
+      </View>
 
       <View style={styles.grid}>
         {features.map((feature, i) => (
@@ -43,15 +43,15 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#121212' },
+  container: { flexGrow: 1, backgroundColor: '#0f172a' },
   header: { padding: 40, paddingTop: 60, alignItems: 'center' },
-  title: { fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  subtitle: { fontSize: 14, color: '#aaa', marginTop: 8 },
+  title: { fontSize: 36, fontWeight: '700', color: '#f1f5f9', letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: '#94a3b8', marginTop: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 16 },
-  card: { width: '48%', aspectRatio: 1, borderRadius: 16, overflow: 'hidden', elevation: 4 },
-  cardGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  card: { width: '48%', aspectRatio: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#334155' },
+  cardGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   cardIcon: { fontSize: 42, marginBottom: 12 },
-  cardName: { fontSize: 15, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  footer: { padding: 24, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#222' },
-  footerText: { fontSize: 12, color: '#666' },
+  cardName: { fontSize: 15, fontWeight: '600', color: '#f1f5f9', textAlign: 'center' },
+  footer: { padding: 24, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1e293b', marginTop: 16 },
+  footerText: { fontSize: 12, color: '#64748b', textAlign: 'center' },
 });

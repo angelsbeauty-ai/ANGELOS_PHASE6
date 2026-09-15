@@ -111,10 +111,10 @@ export default function HermesVoiceScreen() {
 
   const getAvatarColor = () => {
     switch (agentState) {
-      case 'listening': return '#0a0';
-      case 'thinking': return '#aa0';
-      case 'speaking': return '#00a';
-      default: return '#2a2a2a';
+      case 'listening': return '#0ea5e9';
+      case 'thinking': return '#f59e0b';
+      case 'speaking': return '#10b981';
+      default: return '#334155';
     }
   };
 
@@ -199,30 +199,30 @@ export default function HermesVoiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
-  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
-  tutorialBox: { backgroundColor: '#1e1e1e', padding: 28, borderRadius: 20, maxWidth: 320, borderWidth: 1, borderColor: '#333' },
-  tutorialTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 16, textAlign: 'center' },
-  tutorialText: { fontSize: 15, color: '#ccc', marginBottom: 10, textAlign: 'center' },
-  tutorialButton: { backgroundColor: '#0a0', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
-  tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.95)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
+  tutorialBox: { backgroundColor: '#1e293b', padding: 28, borderRadius: 16, maxWidth: 320, borderWidth: 1, borderColor: '#334155' },
+  tutorialTitle: { fontSize: 22, fontWeight: '700', color: '#f1f5f9', marginBottom: 16, textAlign: 'center' },
+  tutorialText: { fontSize: 15, color: '#94a3b8', marginBottom: 10, textAlign: 'center' },
+  tutorialButton: { backgroundColor: '#0ea5e9', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
+  tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '600', textAlign: 'center' },
   avatarContainer: { position: 'absolute', zIndex: 1000 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#fff', shadowOpacity: 0.3, shadowRadius: 6, elevation: 6 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#0ea5e9', shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   avatarEmoji: { fontSize: 32 },
-  avatarLabel: { color: '#fff', fontSize: 10, fontWeight: '700', marginTop: 4 },
+  avatarLabel: { color: '#f1f5f9', fontSize: 12, fontWeight: '600', marginTop: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '600', color: '#f1f5f9' },
   headerLinks: { flexDirection: 'row', gap: 16 },
   headerLink: { fontSize: 20 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  statusText: { fontSize: 16, color: '#fff', marginLeft: 8 },
-  muted: { fontSize: 14, color: '#666' },
-  ok: { color: '#0f0', fontSize: 15, fontWeight: '600' },
+  statusText: { fontSize: 16, color: '#f1f5f9', marginLeft: 8 },
+  muted: { fontSize: 14, color: '#64748b' },
+  ok: { color: '#10b981', fontSize: 15, fontWeight: '600' },
   controls: { padding: 16 },
-  button: { backgroundColor: '#1e1e1e', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12, borderWidth: 1, borderColor: '#333' },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  button: { backgroundColor: '#0ea5e9', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   speechSection: { flex: 1, padding: 16 },
-  transcriptBox: { padding: 16, backgroundColor: '#1e1e1e', borderRadius: 12, borderWidth: 1, borderColor: '#333' },
-  transcriptLabel: { fontSize: 12, color: '#888', marginBottom: 6 },
-  transcript: { fontSize: 15, color: '#fff' },
+  transcriptBox: { padding: 16, backgroundColor: '#1e293b', borderRadius: 12, borderWidth: 1, borderColor: '#334155' },
+  transcriptLabel: { fontSize: 12, color: '#94a3b8', marginBottom: 6 },
+  transcript: { fontSize: 15, color: '#f1f5f9' },
 });
