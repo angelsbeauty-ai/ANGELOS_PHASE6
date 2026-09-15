@@ -1,3 +1,5 @@
 {
-  "imports": {}
+  "imports": {
+    "livekit-server-sdk": "https://esm.sh/livekit-server-sdk@2.13.0"
+  }
 }
