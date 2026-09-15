@@ -1,37 +1,32 @@
 {
   "cli": {
-    "version": ">= 16.0.0",
-    "appVersionSource": "remote"
+    "version": ">= 5.0.0"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "channel": "development",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "development"
-      },
-      "environment": "development"
+      "distribution": "internal"
     },
-    "staging": {
-      "distribution": "internal",
-      "channel": "staging",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "staging"
+    "preview": {
+      "android": {
+        "buildType": "apk"
       },
-      "environment": "preview",
-      "autoIncrement": true
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "channel": "production",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "production"
-      },
-      "environment": "production"
+      "distribution": "store"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      },
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id"
+      }
+    }
   }
 }
