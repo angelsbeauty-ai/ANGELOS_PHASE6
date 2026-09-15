@@ -7,10 +7,11 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const features = [
-    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice', color: ['#0ea5e920', '#0ea5e910'] },
-    { name: 'Planner', icon: '📅', route: '/hermes-planner', color: ['#10b98120', '#10b98110'] },
-    { name: 'History', icon: '📋', route: '/hermes-history', color: ['#8b5cf620', '#8b5cf610'] },
-    { name: 'Settings', icon: '⚙️', route: '/hermes-settings', color: ['#64748b20', '#64748b10'] },
+    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice' },
+    { name: 'AI Settings', icon: '🧠', route: '/ai-settings' },
+    { name: 'Approvals', icon: '✅', route: '/approvals' },
+    { name: 'History', icon: '📋', route: '/hermes-history' },
+    { name: 'Settings', icon: '⚙️', route: '/hermes-settings' },
   ];
 
   return (
@@ -27,7 +28,7 @@ export default function HomeScreen() {
             style={styles.card}
             onPress={() => router.push(feature.route as any)}
           >
-            <LinearGradient colors={feature.color} style={styles.cardGradient}>
+            <LinearGradient colors={['#0ea5e920', '#0ea5e910']} style={styles.cardGradient}>
               <Text style={styles.cardIcon}>{feature.icon}</Text>
               <Text style={styles.cardName}>{feature.name}</Text>
             </LinearGradient>
