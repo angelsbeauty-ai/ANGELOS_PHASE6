@@ -18,6 +18,7 @@ export default function RootLayout() {
       <Stack.Screen name="connections" options={{ title: 'Connections' }} />
       <Stack.Screen name="approvals" options={{ title: 'Approvals' }} />
       <Stack.Screen name="founder-admin" options={{ title: 'Founder' }} />
+      <Stack.Screen name="voice" options={{ title: 'Voice Mode' }} />
     </Stack>
   </>;
 }

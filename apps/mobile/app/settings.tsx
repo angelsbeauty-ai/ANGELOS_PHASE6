@@ -8,6 +8,7 @@ import { supabase } from '../src/lib/supabase';
 
 const areas = [
   { href: '/ai-settings', title: 'AI Assistant', detail: 'Personality, roles, proactivity and guidance' },
+  { href: '/voice', title: 'Voice Mode', detail: 'Hold to talk, AngelOS skills, and the first-version voice list' },
   { href: '/marketing-profile', title: 'Marketing Profile', detail: 'Goals, ideal client, experience and service area' },
   { href: '/subscription', title: 'Subscription', detail: 'Plan, student discount and account access' },
   { href: '/connections', title: 'Connections', detail: 'LINE and Instagram doorway status, connect and disconnect' },
