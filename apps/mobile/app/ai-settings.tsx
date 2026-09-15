@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Screen } from '../src/components/Screen';
@@ -24,6 +25,7 @@ export default function AiSettingsScreen() {
     <Card><SectionTitle>How much should AngelOS lead?</SectionTitle><SupportText>Balanced keeps guidance proactive while leaving important decisions with you.</SupportText><View style={styles.segmentRow}>{(['low','balanced','high'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({proactivity:value})} style={[styles.segment,profile.proactivity===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
     <Card><SectionTitle>Active roles</SectionTitle>{ROLE_COPY.map((role)=><View key={role.key} style={styles.toggleRow}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>{role.label}</Text><SupportText>{role.description}</SupportText></View><Switch trackColor={{false:ui.colors.border,true:ui.colors.softGold}} thumbColor={(roleMap.get(role.key)??true)?ui.colors.gold:ui.colors.secondaryText} value={roleMap.get(role.key)??true} disabled={busy} onValueChange={(value)=>void toggleRole(role.key,value)}/></View>)}</Card>
     <Card><SectionTitle>Everyday guidance</SectionTitle><Toggle label="Ask useful follow-up questions" detail="Guides you one step at a time when the next question matters." value={profile.guidance_questions_enabled} onChange={(value)=>void saveProfile({guidanceQuestionsEnabled:value})}/><Toggle label="Explain recommendations" detail="Briefly explains why and what evidence was used." value={profile.explain_recommendations} onChange={(value)=>void saveProfile({explainRecommendations:value})}/></Card>
+    <Card premium><SectionTitle>Voice Mode</SectionTitle><SupportText>Hold to talk. Communication is an AngelOS skill, not Hermes.</SupportText><Link href="/voice" asChild><Pressable><Text style={styles.toggleTitle}>Open Voice Mode</Text></Pressable></Link></Card>
     <Card><SectionTitle>Floating AI button</SectionTitle><SupportText>Keep it small, compact or hidden from navigation.</SupportText><View style={styles.segmentRow}>{(['on','compact','off'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({floatingButtonMode:value})} style={[styles.segment,profile.floating_button_mode===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
   </Screen>;
 }
