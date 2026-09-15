@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import * as LiveKit from 'livekit-client';
 
@@ -11,6 +11,7 @@ export default function HermesVoiceScreen() {
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
   const [testResult, setTestResult] = useState<any | null>(null);
   const [testing, setTesting] = useState(false);
+  const [userText, setUserText] = useState('');
 
   useEffect(() => {
     if (!room) {
@@ -57,6 +58,17 @@ export default function HermesVoiceScreen() {
       setTestResult({ ok: false, error: e?.message || String(e) });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const sendUserSpeech = async () => {
+    if (!room || !userText.trim()) return;
+    try {
+      const payload = { type: 'user-speech', text: userText.trim() };
+      await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(payload)), { topic: 'chat' });
+      setUserText('');
+    } catch (e) {
+      console.error('Send speech error:', e);
     }
   };
 
@@ -107,6 +119,21 @@ export default function HermesVoiceScreen() {
           <Text style={styles.buttonText}>Test session</Text>
         </TouchableOpacity>
       </View>
+
+      {status === 'connected' && (
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Type what you said (for testing)"
+            value={userText}
+            onChangeText={setUserText}
+            multiline
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendUserSpeech}>
+            <Text style={styles.buttonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {testing && (
         <View style={styles.row}>
@@ -162,4 +189,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   resultTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  inputRow: { marginTop: 12, marginBottom: 12 },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  sendButton: {
+    backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
 });
