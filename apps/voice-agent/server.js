@@ -1,6 +1,7 @@
-// Hermes voice agent HTTP server with real audio streaming, multi-turn conversation, and Supabase memory.
+// Hermes voice agent HTTP server — text-based voice responses (saves TTS credits).
 // POST /join { "roomName": "...", "userId?: string" }
 // Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Optional: SEND_TTS_AUDIO=true (fallback to OpenAI TTS audio instead of text data)
 
 import { createServer } from 'http';
 import { AccessToken } from 'livekit-server-sdk';
@@ -24,7 +25,7 @@ if (!url || !apiKey || !apiSecret || !openAiKey) {
 }
 
 const openai = new OpenAI({ apiKey: openAiKey });
-const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in short, natural sentences (1–3 sentences). Be calm, helpful, and concise. You are talking to a user over voice in real time.`;
+const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in short, natural sentences (1-3 sentences). Be calm, helpful, and concise. You are talking to a user over voice in real time.`;
 
 console.log('Hermes voice agent HTTP server starting on port', port);
 
@@ -69,36 +70,54 @@ async function saveTurn(userId, userText, assistantText) {
 async function speakAndPublish(room, text) {
   console.log('Hermes:', text);
 
-  const tts = await openai.audio.speech.create({
-    model: 'tts-1',
-    voice: 'alloy',
-    input: text,
-    response_format: 'pcm',
-  });
-
-  const file = join(tmpdir(), `hermes-${Date.now()}.pcm`);
-  const writer = createWriteStream(file);
-
-  for await (const chunk of tts.body) {
-    writer.write(chunk);
+  // Send text to the room via data channel — phone plays it with on-device TTS (free).
+  // This saves OpenAI TTS credits on every turn vs sending PCM audio.
+  try {
+    const payload = JSON.stringify({ type: 'agent-text', text });
+    await room.localParticipant.publishData(new TextEncoder().encode(payload), { topic: 'chat' });
+    console.log('Sent agent text to room:', text);
+  } catch (e) {
+    console.error('Failed to publish agent text:', e);
   }
-  writer.end();
-  await new Promise((res) => writer.on('finish', res));
 
-  const audioStream = createReadStream(file, { highWaterMark: 16384 });
-  const audioTrack = createAudioTrack(
-    'hermes-audio',
-    audioStream,
-    { source: 'microphone', sampleRate: 24000, channelCount: 1 }
-  );
+  // Fallback: also send TTS audio if phone doesn't handle on-device TTS.
+  // Disabled by default to save credits — enable by setting SEND_TTS_AUDIO=true.
+  if (process.env.SEND_TTS_AUDIO === 'true') {
+    try {
+      const tts = await openai.audio.speech.create({
+        model: 'tts-1',
+        voice: 'alloy',
+        input: text,
+        response_format: 'pcm',
+      });
 
-  await room.localParticipant.publishTrack(audioTrack, { name: 'hermes-speech' });
-  console.log('Published audio track for:', text);
+      const file = join(tmpdir(), `hermes-${Date.now()}.pcm`);
+      const writer = createWriteStream(file);
 
-  audioStream.on('end', () => {
-    console.log('Finished playing audio for:', text);
-    unlinkSync(file);
-  });
+      for await (const chunk of tts.body) {
+        writer.write(chunk);
+      }
+      writer.end();
+      await new Promise((res) => writer.on('finish', res));
+
+      const audioStream = createReadStream(file, { highWaterMark: 16384 });
+      const audioTrack = createAudioTrack(
+        'hermes-audio',
+        audioStream,
+        { source: 'microphone', sampleRate: 24000, channelCount: 1 }
+      );
+
+      await room.localParticipant.publishTrack(audioTrack, { name: 'hermes-speech' });
+      console.log('Published audio track for:', text);
+
+      audioStream.on('end', () => {
+        console.log('Finished playing audio for:', text);
+        unlinkSync(file);
+      });
+    } catch (e) {
+      console.error('TTS audio publish failed:', e);
+    }
+  }
 }
 
 async function runAgentInRoom(roomName, userId) {

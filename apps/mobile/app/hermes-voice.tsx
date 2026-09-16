@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, PanResponder } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Dimensions, PanResponder, Audio } from 'react-native';
 import { useHermesVoiceLiveKit } from '../src/lib/useHermesVoiceLiveKit';
 import { useSpeechToText } from '../src/lib/useSpeechToText';
+import { useOnDeviceTTS } from '../src/lib/useOnDeviceTTS';
 import * as LiveKit from 'livekit-client';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -13,11 +14,14 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function HermesVoiceScreen() {
   const router = useRouter();
-  const { room, isConnecting, error, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
+  const { room, isConnecting, error: connectError, startSession, endSession, agentJoined } = useHermesVoiceLiveKit();
   const { isListening, transcript, error: sttError, startListening, stopListening, setTranscript } = useSpeechToText({ language: 'ja-JP' });
+  const { speak, stop: stopTTS, isSpeaking: isTTSSpeaking, provider: ttsProvider } = useOnDeviceTTS();
+
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
   const [agentState, setAgentState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
   const [showTutorial, setShowTutorial] = useState(true);
+  const [lastAgentText, setLastAgentText] = useState('');
 
   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH / 2 - 40, y: SCREEN_HEIGHT / 2 })).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -45,10 +49,43 @@ export default function HermesVoiceScreen() {
     if (!room) {
       setStatus('idle');
       setAgentState('idle');
+      stopTTS();
       return;
     }
     setStatus('connected');
   }, [room]);
+
+  // Listen for agent text messages via LiveKit data channels
+  useEffect(() => {
+    if (!room) return;
+
+    const handleDataReceived = (data: LiveKit.DataPayload, participant: LiveKit.Participant) => {
+      try {
+        const msg = JSON.parse(new TextDecoder().decode(data.data));
+        if (msg.type === 'agent-text' && msg.text) {
+          setLastAgentText(msg.text);
+          setAgentState('speaking');
+          // Speak the agent's response on-device — free TTS, saves OpenAI TTS credits
+          speak(msg.text, false);
+        }
+      } catch (e) {
+        console.error('Data parse error:', e);
+      }
+    };
+
+    room.on('dataReceived', handleDataReceived);
+
+    return () => {
+      room.off('dataReceived', handleDataReceived);
+    };
+  }, [room, speak]);
+
+  // Stop TTS when agent finishes speaking
+  useEffect(() => {
+    if (agentState === 'idle' && isTTSSpeaking) {
+      stopTTS();
+    }
+  }, [agentState, isTTSSpeaking, stopTTS]);
 
   const [lastSent, setLastSent] = useState('');
 
@@ -58,14 +95,20 @@ export default function HermesVoiceScreen() {
       sendUserSpeech(transcript);
       setLastSent(transcript);
       setAgentState('thinking');
-      setTimeout(() => setAgentState('speaking'), 800);
-      setTimeout(() => setAgentState('idle'), 2500);
+      setTimeout(() => setAgentState('speaking'), 600);
+      // Auto-reset after a reasonable wait (agent will speak via data channel)
+      setTimeout(() => {
+        if (agentState === 'speaking' && !isTTSSpeaking) {
+          setAgentState('idle');
+        }
+      }, 4000);
     }
   }, [isListening, transcript, room]);
 
   const handleToggle = async () => {
     try {
       if (room) {
+        stopTTS();
         await endSession();
       } else {
         await startSession({ userId: 'demo-user-1', language: 'auto', displayName: 'AngelOs user' });
@@ -104,7 +147,7 @@ export default function HermesVoiceScreen() {
     switch (agentState) {
       case 'listening': return '👂';
       case 'thinking': return '🤔';
-      case 'speaking': return '🗣️';
+      case 'speaking': return isTTSSpeaking ? '🔊' : '🗣️';
       default: return '🤖';
     }
   };
@@ -127,6 +170,7 @@ export default function HermesVoiceScreen() {
             <Text style={styles.tutorialText}>Drag Hermes around</Text>
             <Text style={styles.tutorialText}>Tap to make it listen</Text>
             <Text style={styles.tutorialText}>Speak in Japanese</Text>
+            <Text style={styles.tutorialSmall}>TTS plays on-device — saves cloud credits</Text>
             <TouchableOpacity style={styles.tutorialButton} onPress={handleTutorialDismiss}>
               <Text style={styles.tutorialButtonText}>Got it!</Text>
             </TouchableOpacity>
@@ -172,7 +216,18 @@ export default function HermesVoiceScreen() {
 
       {status === 'connected' && agentJoined && (
         <View style={styles.row}>
-          <Text style={styles.ok}>● Connected</Text>
+          <View style={styles.statusBadge}>
+            <View style={[styles.dot, { backgroundColor: ttsProvider === 'device' ? '#10b981' : '#6366f1' }]} />
+            <Text style={styles.ok}>
+              {ttsProvider === 'device' ? '● On-device TTS' : '● Cloud TTS'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {connectError && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{connectError}</Text>
         </View>
       )}
 
@@ -192,6 +247,12 @@ export default function HermesVoiceScreen() {
           ) : (
             <Text style={styles.muted}>Tap Hermes and speak…</Text>
           )}
+          {lastAgentText && (
+            <View style={styles.agentTextBox}>
+              <Text style={styles.agentTextLabel}>Hermes:</Text>
+              <Text style={styles.agentText}>{lastAgentText}</Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -203,8 +264,9 @@ const styles = StyleSheet.create({
   tutorialOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.95)', zIndex: 2000, justifyContent: 'center', alignItems: 'center' },
   tutorialBox: { backgroundColor: '#1e293b', padding: 28, borderRadius: 16, maxWidth: 320, borderWidth: 1, borderColor: '#334155' },
   tutorialTitle: { fontSize: 22, fontWeight: '700', color: '#f1f5f9', marginBottom: 16, textAlign: 'center' },
-  tutorialText: { fontSize: 15, color: '#94a3b8', marginBottom: 10, textAlign: 'center' },
-  tutorialButton: { backgroundColor: '#0ea5e9', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
+  tutorialText: { fontSize: 15, color: '#94a3b8', marginBottom: 8, textAlign: 'center' },
+  tutorialSmall: { fontSize: 12, color: '#64748b', marginBottom: 16, textAlign: 'center', fontStyle: 'italic' },
+  tutorialButton: { backgroundColor: '#0ea5e9', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 8 },
   tutorialButtonText: { color: '#fff', fontSize: 17, fontWeight: '600', textAlign: 'center' },
   avatarContainer: { position: 'absolute', zIndex: 1000 },
   avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#0ea5e9', shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
@@ -215,7 +277,11 @@ const styles = StyleSheet.create({
   headerLinks: { flexDirection: 'row', gap: 16 },
   headerLink: { fontSize: 20 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 16, color: '#f1f5f9', marginLeft: 8 },
+  errorBox: { padding: 12, backgroundColor: '#fef2f2', borderRadius: 8, margin: 16, borderWidth: 1, borderColor: '#fecaca' },
+  errorText: { color: '#dc2626', fontSize: 14 },
   muted: { fontSize: 14, color: '#64748b' },
   ok: { color: '#10b981', fontSize: 15, fontWeight: '600' },
   controls: { padding: 16 },
@@ -225,4 +291,7 @@ const styles = StyleSheet.create({
   transcriptBox: { padding: 16, backgroundColor: '#1e293b', borderRadius: 12, borderWidth: 1, borderColor: '#334155' },
   transcriptLabel: { fontSize: 12, color: '#94a3b8', marginBottom: 6 },
   transcript: { fontSize: 15, color: '#f1f5f9' },
+  agentTextBox: { marginTop: 12, padding: 16, backgroundColor: '#1e293b', borderRadius: 12, borderWidth: 1, borderColor: '#10b981' },
+  agentTextLabel: { fontSize: 12, color: '#10b981', marginBottom: 4, fontWeight: '600' },
+  agentText: { fontSize: 15, color: '#f1f5f9' },
 });
