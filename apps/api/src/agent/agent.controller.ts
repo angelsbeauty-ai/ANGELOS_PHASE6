@@ -1,11 +1,11 @@
 import { Controller, Post, Get, Param, Body, Query, UseGuards } from '@nestjs/common';
-import { MainAgentService, MainAgentRequest, MainAgentResponse } from '../main-agent.service';
-import { OrchestratorService } from '../orchestrator/orchestrator.service';
-import { LearningRulesService } from '../rules/learning-rules.service';
-import { BotRegistry } from '../bot/bot-registry.service';
-import { SupabaseAuthGuard } from '../../common/guards/supabase-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../auth/auth-user';
+import { MainAgentService, MainAgentRequest, MainAgentResponse } from './main-agent.service';
+import { OrchestratorService } from './orchestrator/orchestrator.service';
+import { LearningRulesService } from './rules/learning-rules.service';
+import { BotRegistry } from './bot/bot-registry.service';
+import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuthUser } from '../auth/auth-user';
 
 @Controller('workspaces/:workspaceId/agent')
 @UseGuards(SupabaseAuthGuard)

@@ -3,7 +3,7 @@ import { createServiceSupabaseClient } from '../../config/supabase';
 
 export interface LearningRule {
   id?: string;
-  workspace_id: string;
+  workspace_id?: string;
   scope: 'global' | 'angels_beauty' | 'academy' | 'angelos' | 'capability' | 'bot';
   scope_value?: string;
   rule_text: string;

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { createServiceSupabaseClient } from '../../config/supabase';
+import { createServiceSupabaseClient } from '../config/supabase';
 
 export interface MainAgentRequest {
   workspaceId: string;

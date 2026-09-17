@@ -16,4 +16,4 @@ export class DbExecutorController {
   controllers: [DbExecutorController],
   providers: [DbExecutorService],
 })
-export class DbExecutorModule {}
+export class DbrexecModule {}

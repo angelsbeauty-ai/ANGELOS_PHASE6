@@ -4,6 +4,7 @@ import { createServiceSupabaseClient } from '../../config/supabase';
 export interface OrchestratorTask {
   id: string;
   workspace_id: string;
+  user_message: string;
   intent: string;
   task_description: string;
   status: 'queued' | 'assigned' | 'in_progress' | 'completed' | 'failed' | 'awaiting_approval';
