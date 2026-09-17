@@ -1,0 +1,1 @@
+{"version":3,"file":"provider-adapter.js","sourceRoot":"","sources":["../../src/messaging/provider-adapter.ts"],"names":[],"mappings":";;;AAsBA,MAAa,0BAA0B;IACrC,KAAK,CAAC,IAAI,CAAC,KAAyB;QAClC,OAAO;YACL,MAAM,EAAE,MAAM;YACd,iBAAiB,EAAE,QAAQ,KAAK,CAAC,cAAc,EAAE;YACjD,GAAG,EAAE,EAAE,SAAS,EAAE,aAAa,EAAE,cAAc,EAAE,KAAK,CAAC,cAAc,EAAE;SACxE,CAAC;IACJ,CAAC;CACF;AARD,gEAQC"}
