@@ -6,6 +6,7 @@ node_modules
 # Allow root dist/ for Railway CMD entry point (postbuild output + wrapper)
 !dist
 !dist/*
+!dist/**
 coverage
 supabase/.temp/
 .DS_Store
