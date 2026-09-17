@@ -1,8 +1,6 @@
 node_modules
-**/node_modules
 dist
 !dist/main.js
-apps/api/dist
 apps/dist
 tmp
 .git
