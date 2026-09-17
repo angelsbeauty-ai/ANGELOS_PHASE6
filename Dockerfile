@@ -1,7 +1,7 @@
 # AngelOS API — Railway Dockerfile (root-level)
 FROM node:22-alpine AS build
 WORKDIR /build
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/nest-cli.json ./apps/api/
 COPY apps/api/tsconfig.json ./apps/api/
