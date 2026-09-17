@@ -8,7 +8,7 @@ COPY apps/api/tsconfig.json ./apps/api/
 COPY apps/api/src ./apps/api/src
 COPY supabase/migrations ./supabase/migrations
 COPY scripts/migrations ./scripts/migrations
-ENV NPM_CONFIG_IGNORE_WORKSPACES=true
+ENV npm_config_ignore_workspaces=true
 RUN npm install --prefix ./apps/api
 WORKDIR /build/apps/api
 RUN npx --prefix . nest build
