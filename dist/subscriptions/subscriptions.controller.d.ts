@@ -35,8 +35,8 @@ export declare class SubscriptionsController {
     checkout(user: AuthUser, workspaceId: string, dto: ChangePlanDto): Promise<{
         checkout: {
             mode: "checkout" | "not_configured";
-            url?: string;
-            message?: string;
+            url?: string | undefined;
+            message?: string | undefined;
         };
         preview: {
             currency: any;

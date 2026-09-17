@@ -17,7 +17,7 @@ const angelos_bot_1 = require("../bot/angelos.bot");
 const general_bot_1 = require("../bot/general.bot");
 const sub_agent_service_1 = require("../sub-agent/sub-agent.service");
 const supabase_1 = require("../../config/supabase");
-let BotRegistry = class BotRegistry {
+let BotRegistry = exports.BotRegistry = class BotRegistry {
     angelsBeautyBot;
     academyBot;
     angelOSBot;
@@ -71,7 +71,6 @@ let BotRegistry = class BotRegistry {
         return bot.getBotInfo();
     }
 };
-exports.BotRegistry = BotRegistry;
 exports.BotRegistry = BotRegistry = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [angels_beauty_bot_1.AngelsBeautyBot,

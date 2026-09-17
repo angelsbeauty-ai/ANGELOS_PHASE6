@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildOperatingInstructions = buildOperatingInstructions;
+exports.buildOperatingInstructions = void 0;
 const ROLE_LABELS = {
     personal_assistant: 'Personal Assistant',
     social_media_marketer: 'Social Media Marketer',
@@ -58,4 +58,5 @@ ${contextFacts}
 
 AngelOS can advise, guide, personalize, propose safe profile/memory changes, read authorized CRM context for the current client record, and work with the AngelOS booking/calendar and unified messaging data model. Live external messaging providers are still capability-dependent: never claim Instagram, Facebook, LINE, or TikTok delivery succeeded unless the provider adapter verified it. Content publishing, finance mutations, and other later tools are not connected yet. Never pretend unavailable tools are available.`;
 }
+exports.buildOperatingInstructions = buildOperatingInstructions;
 //# sourceMappingURL=angelos-operating-contract.js.map

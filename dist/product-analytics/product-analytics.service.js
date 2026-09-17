@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductAnalyticsService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let ProductAnalyticsService = class ProductAnalyticsService {
+let ProductAnalyticsService = exports.ProductAnalyticsService = class ProductAnalyticsService {
     async track(user, workspaceId, dto) {
         const userClient = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         const { data: workspace } = await userClient.from('workspaces').select('id').eq('id', workspaceId).maybeSingle();
@@ -23,7 +23,6 @@ let ProductAnalyticsService = class ProductAnalyticsService {
         return { recorded: true };
     }
 };
-exports.ProductAnalyticsService = ProductAnalyticsService;
 exports.ProductAnalyticsService = ProductAnalyticsService = __decorate([
     (0, common_1.Injectable)()
 ], ProductAnalyticsService);

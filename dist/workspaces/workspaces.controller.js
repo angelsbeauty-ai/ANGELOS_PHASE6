@@ -18,7 +18,7 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const create_workspace_dto_1 = require("./create-workspace.dto");
 const workspaces_service_1 = require("./workspaces.service");
-let WorkspacesController = class WorkspacesController {
+let WorkspacesController = exports.WorkspacesController = class WorkspacesController {
     workspaces;
     constructor(workspaces) {
         this.workspaces = workspaces;
@@ -30,7 +30,6 @@ let WorkspacesController = class WorkspacesController {
         return this.workspaces.create(user, dto);
     }
 };
-exports.WorkspacesController = WorkspacesController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

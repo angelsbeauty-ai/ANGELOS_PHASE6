@@ -11,9 +11,8 @@ const common_1 = require("@nestjs/common");
 const approvals_controller_1 = require("./approvals.controller");
 const approvals_service_1 = require("./approvals.service");
 const messaging_module_1 = require("../messaging/messaging.module");
-let ApprovalsModule = class ApprovalsModule {
+let ApprovalsModule = exports.ApprovalsModule = class ApprovalsModule {
 };
-exports.ApprovalsModule = ApprovalsModule;
 exports.ApprovalsModule = ApprovalsModule = __decorate([
     (0, common_1.Module)({
         imports: [messaging_module_1.MessagingModule],

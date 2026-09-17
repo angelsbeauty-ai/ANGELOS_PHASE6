@@ -10,7 +10,7 @@ exports.FounderService = void 0;
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const supabase_1 = require("../config/supabase");
-let FounderService = class FounderService {
+let FounderService = exports.FounderService = class FounderService {
     async me(user) { return { founder: true, userId: user.id, email: user.email ?? null }; }
     async overview() {
         const service = (0, supabase_1.createServiceSupabaseClient)();
@@ -132,7 +132,6 @@ let FounderService = class FounderService {
         return data;
     }
 };
-exports.FounderService = FounderService;
 exports.FounderService = FounderService = __decorate([
     (0, common_1.Injectable)()
 ], FounderService);

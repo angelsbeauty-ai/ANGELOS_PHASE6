@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.N8nCallbackService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let N8nCallbackService = class N8nCallbackService {
+let N8nCallbackService = exports.N8nCallbackService = class N8nCallbackService {
     async recordTaskResult(taskId, executionId, result, error) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const now = new Date().toISOString();
@@ -111,7 +111,6 @@ let N8nCallbackService = class N8nCallbackService {
         }).join('\n') + (items.length > 5 ? `\n- ... and ${items.length - 5} more` : '');
     }
 };
-exports.N8nCallbackService = N8nCallbackService;
 exports.N8nCallbackService = N8nCallbackService = __decorate([
     (0, common_1.Injectable)()
 ], N8nCallbackService);

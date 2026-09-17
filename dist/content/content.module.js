@@ -13,9 +13,8 @@ const content_service_1 = require("./content.service");
 const publishing_service_1 = require("./publishing.service");
 const publishing_adapter_registry_1 = require("./publishing-adapter.registry");
 const ai_provider_service_1 = require("../ai/ai-provider.service");
-let ContentModule = class ContentModule {
+let ContentModule = exports.ContentModule = class ContentModule {
 };
-exports.ContentModule = ContentModule;
 exports.ContentModule = ContentModule = __decorate([
     (0, common_1.Module)({
         controllers: [content_controller_1.ContentController],

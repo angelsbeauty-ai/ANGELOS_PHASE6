@@ -23,7 +23,7 @@ const send_ai_message_dto_1 = require("./dto/send-ai-message.dto");
 const send_voice_message_dto_1 = require("./dto/send-voice-message.dto");
 const update_assistant_profile_dto_1 = require("./dto/update-assistant-profile.dto");
 const update_assistant_roles_dto_1 = require("./dto/update-assistant-roles.dto");
-let AiController = class AiController {
+let AiController = exports.AiController = class AiController {
     ai;
     constructor(ai) {
         this.ai = ai;
@@ -62,7 +62,6 @@ let AiController = class AiController {
         return this.ai.sendVoice(user, workspaceId, dto);
     }
 };
-exports.AiController = AiController;
 __decorate([
     (0, common_1.Get)('profile'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

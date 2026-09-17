@@ -11,7 +11,7 @@ const common_1 = require("@nestjs/common");
 const livekit_server_sdk_1 = require("livekit-server-sdk");
 const node_crypto_1 = require("node:crypto");
 const DEFAULT_TTL_SECONDS = 15 * 60;
-let VoiceService = class VoiceService {
+let VoiceService = exports.VoiceService = class VoiceService {
     createSession(input) {
         const url = process.env.LIVEKIT_URL?.trim();
         const apiKey = process.env.LIVEKIT_API_KEY?.trim();
@@ -51,7 +51,6 @@ let VoiceService = class VoiceService {
         };
     }
 };
-exports.VoiceService = VoiceService;
 exports.VoiceService = VoiceService = __decorate([
     (0, common_1.Injectable)()
 ], VoiceService);

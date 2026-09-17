@@ -8,7 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AiProviderService = void 0;
 const common_1 = require("@nestjs/common");
-let AiProviderService = class AiProviderService {
+let AiProviderService = exports.AiProviderService = class AiProviderService {
     async generate(request) {
         const mode = process.env.AI_PROVIDER_MODE ?? 'mock';
         if (mode !== 'openai') {
@@ -78,7 +78,6 @@ let AiProviderService = class AiProviderService {
         return { text, provider: 'mock', model: 'angelos-dev-mock' };
     }
 };
-exports.AiProviderService = AiProviderService;
 exports.AiProviderService = AiProviderService = __decorate([
     (0, common_1.Injectable)()
 ], AiProviderService);

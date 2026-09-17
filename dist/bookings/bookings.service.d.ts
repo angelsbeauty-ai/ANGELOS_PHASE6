@@ -23,7 +23,7 @@ export declare class BookingsService {
         slots: {
             startAt: string;
             endAt: string;
-            status: "available" | "soft_conflict";
+            status: 'available' | 'soft_conflict';
             softConflicts: unknown[];
         }[];
     }>;

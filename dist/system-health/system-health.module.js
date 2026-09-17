@@ -10,9 +10,8 @@ exports.SystemHealthModule = void 0;
 const common_1 = require("@nestjs/common");
 const system_health_controller_1 = require("./system-health.controller");
 const system_health_service_1 = require("./system-health.service");
-let SystemHealthModule = class SystemHealthModule {
+let SystemHealthModule = exports.SystemHealthModule = class SystemHealthModule {
 };
-exports.SystemHealthModule = SystemHealthModule;
 exports.SystemHealthModule = SystemHealthModule = __decorate([
     (0, common_1.Module)({ controllers: [system_health_controller_1.SystemHealthController], providers: [system_health_service_1.SystemHealthService], exports: [system_health_service_1.SystemHealthService] })
 ], SystemHealthModule);

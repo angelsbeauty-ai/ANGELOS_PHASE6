@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SubAgentService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let SubAgentService = class SubAgentService {
+let SubAgentService = exports.SubAgentService = class SubAgentService {
     async createSubAgentTask(workspaceId, orchestratorTaskId, bot, subAgent, intent, taskDescription, requiresApproval) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const { data, error } = await supabase
@@ -80,7 +80,6 @@ let SubAgentService = class SubAgentService {
         });
     }
 };
-exports.SubAgentService = SubAgentService;
 exports.SubAgentService = SubAgentService = __decorate([
     (0, common_1.Injectable)()
 ], SubAgentService);

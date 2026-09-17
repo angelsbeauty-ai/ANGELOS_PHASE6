@@ -12,9 +12,8 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const clients_controller_1 = require("./clients.controller");
 const clients_service_1 = require("./clients.service");
 const automations_module_1 = require("../automations/automations.module");
-let ClientsModule = class ClientsModule {
+let ClientsModule = exports.ClientsModule = class ClientsModule {
 };
-exports.ClientsModule = ClientsModule;
 exports.ClientsModule = ClientsModule = __decorate([
     (0, common_1.Module)({
         imports: [automations_module_1.AutomationsModule],

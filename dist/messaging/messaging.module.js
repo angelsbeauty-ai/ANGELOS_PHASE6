@@ -15,9 +15,8 @@ const meta_webhook_controller_1 = require("./meta-webhook.controller");
 const messaging_service_1 = require("./messaging.service");
 const staging_message_execution_service_1 = require("./staging-message-execution.service");
 const line_transport_1 = require("./line-transport");
-let MessagingModule = class MessagingModule {
+let MessagingModule = exports.MessagingModule = class MessagingModule {
 };
-exports.MessagingModule = MessagingModule;
 exports.MessagingModule = MessagingModule = __decorate([
     (0, common_1.Module)({
         imports: [ai_module_1.AiModule],

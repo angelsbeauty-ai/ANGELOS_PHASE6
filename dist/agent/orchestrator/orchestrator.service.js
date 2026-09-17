@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrchestratorService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let OrchestratorService = class OrchestratorService {
+let OrchestratorService = exports.OrchestratorService = class OrchestratorService {
     async createTask(workspaceId, userMessage, intent, requiresApproval) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const { data, error } = await supabase
@@ -102,7 +102,6 @@ let OrchestratorService = class OrchestratorService {
         return (data ?? []);
     }
 };
-exports.OrchestratorService = OrchestratorService;
 exports.OrchestratorService = OrchestratorService = __decorate([
     (0, common_1.Injectable)()
 ], OrchestratorService);

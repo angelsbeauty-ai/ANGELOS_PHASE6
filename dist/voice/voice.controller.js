@@ -16,7 +16,7 @@ exports.VoiceController = void 0;
 const common_1 = require("@nestjs/common");
 const create_voice_session_dto_1 = require("./dto/create-voice-session.dto");
 const voice_service_1 = require("./voice.service");
-let VoiceController = class VoiceController {
+let VoiceController = exports.VoiceController = class VoiceController {
     voiceService;
     constructor(voiceService) {
         this.voiceService = voiceService;
@@ -25,7 +25,6 @@ let VoiceController = class VoiceController {
         return this.voiceService.createSession(input);
     }
 };
-exports.VoiceController = VoiceController;
 __decorate([
     (0, common_1.Post)('session'),
     __param(0, (0, common_1.Body)()),

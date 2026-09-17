@@ -18,14 +18,13 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const track_product_event_dto_1 = require("./dto/track-product-event.dto");
 const product_analytics_service_1 = require("./product-analytics.service");
-let ProductAnalyticsController = class ProductAnalyticsController {
+let ProductAnalyticsController = exports.ProductAnalyticsController = class ProductAnalyticsController {
     analytics;
     constructor(analytics) {
         this.analytics = analytics;
     }
     track(user, workspaceId, dto) { return this.analytics.track(user, workspaceId, dto); }
 };
-exports.ProductAnalyticsController = ProductAnalyticsController;
 __decorate([
     (0, common_1.Post)('events'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

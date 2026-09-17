@@ -19,7 +19,7 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const beta_service_1 = require("./beta.service");
 const redeem_beta_invite_dto_1 = require("./dto/redeem-beta-invite.dto");
 const submit_beta_feedback_dto_1 = require("./dto/submit-beta-feedback.dto");
-let BetaController = class BetaController {
+let BetaController = exports.BetaController = class BetaController {
     beta;
     constructor(beta) {
         this.beta = beta;
@@ -28,7 +28,6 @@ let BetaController = class BetaController {
     redeem(user, dto) { return this.beta.redeem(user, dto); }
     feedback(user, workspaceId, dto) { return this.beta.submitFeedback(user, workspaceId, dto); }
 };
-exports.BetaController = BetaController;
 __decorate([
     (0, common_1.Get)('me'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

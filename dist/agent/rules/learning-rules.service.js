@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LearningRulesService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let LearningRulesService = class LearningRulesService {
+let LearningRulesService = exports.LearningRulesService = class LearningRulesService {
     async createRule(workspaceId, rule) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const { data, error } = await supabase
@@ -86,7 +86,6 @@ let LearningRulesService = class LearningRulesService {
         return rules.map((r) => r.rule_text);
     }
 };
-exports.LearningRulesService = LearningRulesService;
 exports.LearningRulesService = LearningRulesService = __decorate([
     (0, common_1.Injectable)()
 ], LearningRulesService);

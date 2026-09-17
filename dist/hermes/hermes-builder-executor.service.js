@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HermesBuilderExecutor = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let HermesBuilderExecutor = class HermesBuilderExecutor {
+let HermesBuilderExecutor = exports.HermesBuilderExecutor = class HermesBuilderExecutor {
     async execute(request) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const timeoutMs = request.timeoutMs ?? 300000;
@@ -138,7 +138,6 @@ let HermesBuilderExecutor = class HermesBuilderExecutor {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 };
-exports.HermesBuilderExecutor = HermesBuilderExecutor;
 exports.HermesBuilderExecutor = HermesBuilderExecutor = __decorate([
     (0, common_1.Injectable)()
 ], HermesBuilderExecutor);

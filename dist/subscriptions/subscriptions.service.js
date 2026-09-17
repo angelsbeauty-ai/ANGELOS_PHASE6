@@ -12,7 +12,7 @@ const supabase_1 = require("../config/supabase");
 const crypto_1 = require("crypto");
 const billing_provider_1 = require("./billing-provider");
 const READ_ONLY_DAYS = 60;
-let SubscriptionsService = class SubscriptionsService {
+let SubscriptionsService = exports.SubscriptionsService = class SubscriptionsService {
     billing = new billing_provider_1.UnconfiguredBillingProvider();
     async getStatus(user, workspaceId) {
         await this.assertWorkspaceAccess(user, workspaceId);
@@ -146,7 +146,6 @@ let SubscriptionsService = class SubscriptionsService {
             throw new common_1.InternalServerErrorException(error.message);
     }
 };
-exports.SubscriptionsService = SubscriptionsService;
 exports.SubscriptionsService = SubscriptionsService = __decorate([
     (0, common_1.Injectable)()
 ], SubscriptionsService);

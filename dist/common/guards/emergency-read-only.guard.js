@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmergencyReadOnlyGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let EmergencyReadOnlyGuard = class EmergencyReadOnlyGuard {
+let EmergencyReadOnlyGuard = exports.EmergencyReadOnlyGuard = class EmergencyReadOnlyGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const method = String(request.method ?? 'GET').toUpperCase();
@@ -44,7 +44,6 @@ let EmergencyReadOnlyGuard = class EmergencyReadOnlyGuard {
         return true;
     }
 };
-exports.EmergencyReadOnlyGuard = EmergencyReadOnlyGuard;
 exports.EmergencyReadOnlyGuard = EmergencyReadOnlyGuard = __decorate([
     (0, common_1.Injectable)()
 ], EmergencyReadOnlyGuard);

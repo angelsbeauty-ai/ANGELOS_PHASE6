@@ -18,7 +18,7 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const record_finance_entry_dto_1 = require("./dto/record-finance-entry.dto");
 const finance_service_1 = require("./finance.service");
-let FinanceController = class FinanceController {
+let FinanceController = exports.FinanceController = class FinanceController {
     finance;
     constructor(finance) {
         this.finance = finance;
@@ -33,7 +33,6 @@ let FinanceController = class FinanceController {
         return this.finance.recordEntry(user, workspaceId, dto);
     }
 };
-exports.FinanceController = FinanceController;
 __decorate([
     (0, common_1.Get)('overview'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

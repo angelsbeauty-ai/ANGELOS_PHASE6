@@ -24,7 +24,7 @@ const create_treatment_dto_1 = require("./dto/create-treatment.dto");
 const create_consent_dto_1 = require("./dto/create-consent.dto");
 const create_followup_dto_1 = require("./dto/create-followup.dto");
 const automations_service_1 = require("../automations/automations.service");
-let ClientsController = class ClientsController {
+let ClientsController = exports.ClientsController = class ClientsController {
     clients;
     automations;
     constructor(clients, automations) {
@@ -56,7 +56,6 @@ let ClientsController = class ClientsController {
         return this.clients.addFollowup(user, workspaceId, clientId, dto);
     }
 };
-exports.ClientsController = ClientsController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

@@ -18,7 +18,7 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const update_operational_controls_dto_1 = require("./dto/update-operational-controls.dto");
 const system_health_service_1 = require("./system-health.service");
-let SystemHealthController = class SystemHealthController {
+let SystemHealthController = exports.SystemHealthController = class SystemHealthController {
     health;
     constructor(health) {
         this.health = health;
@@ -39,7 +39,6 @@ let SystemHealthController = class SystemHealthController {
         return this.health.updateControls(user, workspaceId, dto);
     }
 };
-exports.SystemHealthController = SystemHealthController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SubscriptionAccessGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let SubscriptionAccessGuard = class SubscriptionAccessGuard {
+let SubscriptionAccessGuard = exports.SubscriptionAccessGuard = class SubscriptionAccessGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const method = String(request.method ?? 'GET').toUpperCase();
@@ -57,7 +57,6 @@ let SubscriptionAccessGuard = class SubscriptionAccessGuard {
         return true;
     }
 };
-exports.SubscriptionAccessGuard = SubscriptionAccessGuard;
 exports.SubscriptionAccessGuard = SubscriptionAccessGuard = __decorate([
     (0, common_1.Injectable)()
 ], SubscriptionAccessGuard);

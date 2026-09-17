@@ -13,7 +13,7 @@ exports.ClientsService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const automations_service_1 = require("../automations/automations.service");
-let ClientsService = class ClientsService {
+let ClientsService = exports.ClientsService = class ClientsService {
     automations;
     constructor(automations) {
         this.automations = automations;
@@ -211,7 +211,6 @@ let ClientsService = class ClientsService {
             throw new common_1.NotFoundException('Client not found');
     }
 };
-exports.ClientsService = ClientsService;
 exports.ClientsService = ClientsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [automations_service_1.AutomationsService])

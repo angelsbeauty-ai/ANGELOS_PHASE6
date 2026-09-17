@@ -16,7 +16,7 @@ exports.N8nCallbackController = void 0;
 const common_1 = require("@nestjs/common");
 const hermes_builder_result_recorder_service_1 = require("./hermes-builder-result-recorder.service");
 const n8nsecret_guard_1 = require("../common/guards/n8nsecret.guard");
-let N8nCallbackController = class N8nCallbackController {
+let N8nCallbackController = exports.N8nCallbackController = class N8nCallbackController {
     recorder;
     constructor(recorder) {
         this.recorder = recorder;
@@ -25,7 +25,6 @@ let N8nCallbackController = class N8nCallbackController {
         return this.recorder.recordResult(body.taskId, body.executionId ?? 'n8n-' + Date.now(), body.result ?? {}, body.error);
     }
 };
-exports.N8nCallbackController = N8nCallbackController;
 __decorate([
     (0, common_1.Post)('callback'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

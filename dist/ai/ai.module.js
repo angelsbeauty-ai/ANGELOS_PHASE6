@@ -12,9 +12,8 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const ai_controller_1 = require("./ai.controller");
 const ai_provider_service_1 = require("./ai-provider.service");
 const ai_service_1 = require("./ai.service");
-let AiModule = class AiModule {
+let AiModule = exports.AiModule = class AiModule {
 };
-exports.AiModule = AiModule;
 exports.AiModule = AiModule = __decorate([
     (0, common_1.Module)({
         controllers: [ai_controller_1.AiController],

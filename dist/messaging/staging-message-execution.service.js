@@ -6,8 +6,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StagingMessageExecutionService = void 0;
-exports.flow1StagingEnabled = flow1StagingEnabled;
+exports.StagingMessageExecutionService = exports.flow1StagingEnabled = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const provider_adapter_1 = require("./provider-adapter");
@@ -16,7 +15,8 @@ function flow1StagingEnabled(workspaceId) {
         && process.env.FLOW1_STAGING_EXECUTION_ENABLED === 'true'
         && process.env.FLOW1_STAGING_WORKSPACE_ID === workspaceId;
 }
-let StagingMessageExecutionService = class StagingMessageExecutionService {
+exports.flow1StagingEnabled = flow1StagingEnabled;
+let StagingMessageExecutionService = exports.StagingMessageExecutionService = class StagingMessageExecutionService {
     manualAdapter = new provider_adapter_1.ManualDemoMessagingAdapter();
     assertEnabled(workspaceId) {
         if (!flow1StagingEnabled(workspaceId))
@@ -68,7 +68,6 @@ let StagingMessageExecutionService = class StagingMessageExecutionService {
         return { status: attempt.status, duplicatePrevented: false, attemptId: attempt.id };
     }
 };
-exports.StagingMessageExecutionService = StagingMessageExecutionService;
 exports.StagingMessageExecutionService = StagingMessageExecutionService = __decorate([
     (0, common_1.Injectable)()
 ], StagingMessageExecutionService);

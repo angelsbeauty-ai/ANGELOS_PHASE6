@@ -26,7 +26,7 @@ const translate_message_dto_1 = require("./dto/translate-message.dto");
 const review_client_control_draft_dto_1 = require("./dto/review-client-control-draft.dto");
 const connect_meta_channel_dto_1 = require("./dto/connect-meta-channel.dto");
 const connect_line_channel_dto_1 = require("./dto/connect-line-channel.dto");
-let MessagingController = class MessagingController {
+let MessagingController = exports.MessagingController = class MessagingController {
     messaging;
     constructor(messaging) {
         this.messaging = messaging;
@@ -54,7 +54,6 @@ let MessagingController = class MessagingController {
     addInternalNote(user, workspaceId, threadId, dto) { return this.messaging.addInternalNote(user, workspaceId, threadId, dto.content); }
     updateThread(user, workspaceId, threadId, dto) { return this.messaging.updateThread(user, workspaceId, threadId, dto); }
 };
-exports.MessagingController = MessagingController;
 __decorate([
     (0, common_1.Get)('channels'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

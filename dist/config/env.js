@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateRuntimeEnvironment = validateRuntimeEnvironment;
+exports.validateRuntimeEnvironment = void 0;
 function required(name) {
     const value = process.env[name]?.trim();
     if (!value)
@@ -58,4 +58,5 @@ function validateRuntimeEnvironment() {
         trustProxyHops
     };
 }
+exports.validateRuntimeEnvironment = validateRuntimeEnvironment;
 //# sourceMappingURL=env.js.map

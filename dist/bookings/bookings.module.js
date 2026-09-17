@@ -12,9 +12,8 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const bookings_controller_1 = require("./bookings.controller");
 const bookings_service_1 = require("./bookings.service");
 const automations_module_1 = require("../automations/automations.module");
-let BookingsModule = class BookingsModule {
+let BookingsModule = exports.BookingsModule = class BookingsModule {
 };
-exports.BookingsModule = BookingsModule;
 exports.BookingsModule = BookingsModule = __decorate([
     (0, common_1.Module)({ imports: [automations_module_1.AutomationsModule], controllers: [bookings_controller_1.BookingsController], providers: [bookings_service_1.BookingsService, supabase_auth_guard_1.SupabaseAuthGuard] })
 ], BookingsModule);

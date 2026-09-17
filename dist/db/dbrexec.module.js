@@ -13,27 +13,24 @@ exports.DbrexecModule = exports.DbExecutorController = exports.DbExecutorService
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const common_2 = require("@nestjs/common");
-let DbExecutorService = class DbExecutorService {
+let DbExecutorService = exports.DbExecutorService = class DbExecutorService {
     supabase = (0, supabase_1.createServiceSupabaseClient)();
 };
-exports.DbExecutorService = DbExecutorService;
 exports.DbExecutorService = DbExecutorService = __decorate([
     (0, common_2.Injectable)()
 ], DbExecutorService);
-let DbExecutorController = class DbExecutorController {
+let DbExecutorController = exports.DbExecutorController = class DbExecutorController {
     dbExecutorService;
     constructor(dbExecutorService) {
         this.dbExecutorService = dbExecutorService;
     }
 };
-exports.DbExecutorController = DbExecutorController;
 exports.DbExecutorController = DbExecutorController = __decorate([
     (0, common_1.Controller)('db'),
     __metadata("design:paramtypes", [DbExecutorService])
 ], DbExecutorController);
-let DbrexecModule = class DbrexecModule {
+let DbrexecModule = exports.DbrexecModule = class DbrexecModule {
 };
-exports.DbrexecModule = DbrexecModule;
 exports.DbrexecModule = DbrexecModule = __decorate([
     (0, common_2.Module)({
         controllers: [DbExecutorController],

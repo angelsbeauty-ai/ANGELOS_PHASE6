@@ -1,9 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MetaMessagingAdapter = void 0;
-exports.metaTransportEnabled = metaTransportEnabled;
-exports.loadMetaAppCredentials = loadMetaAppCredentials;
-exports.metaCredentialStatus = metaCredentialStatus;
+exports.MetaMessagingAdapter = exports.metaCredentialStatus = exports.loadMetaAppCredentials = exports.metaTransportEnabled = void 0;
 const supabase_1 = require("../config/supabase");
 function metaTransportEnabled(workspaceId) {
     if (process.env.META_TRANSPORT_ENABLED !== 'true')
@@ -13,6 +10,7 @@ function metaTransportEnabled(workspaceId) {
         return false;
     return true;
 }
+exports.metaTransportEnabled = metaTransportEnabled;
 async function loadMetaAppCredentials() {
     const supabase = (0, supabase_1.createServiceSupabaseClient)();
     const { data, error } = await supabase
@@ -31,6 +29,7 @@ async function loadMetaAppCredentials() {
     }
     return { appId: row.client_key, appSecret: row.client_secret };
 }
+exports.loadMetaAppCredentials = loadMetaAppCredentials;
 async function metaCredentialStatus(workspaceId) {
     const supabase = (0, supabase_1.createServiceSupabaseClient)();
     const [app, connections, channels] = await Promise.all([
@@ -59,6 +58,7 @@ async function metaCredentialStatus(workspaceId) {
         }))
     };
 }
+exports.metaCredentialStatus = metaCredentialStatus;
 async function loadMetaConnection(workspaceId, provider) {
     const supabase = (0, supabase_1.createServiceSupabaseClient)();
     const { data, error } = await supabase
@@ -79,7 +79,7 @@ async function loadMetaConnection(workspaceId, provider) {
     return { accessToken: data.access_token };
 }
 const GRAPH_API_VERSION = 'v21.0';
-const GRAPH_TIMEOUT_MS = 15_000;
+const GRAPH_TIMEOUT_MS = 15000;
 class MetaMessagingAdapter {
     async send(input) {
         const { workspaceId, provider, externalAccountId, externalThreadId, body } = input;

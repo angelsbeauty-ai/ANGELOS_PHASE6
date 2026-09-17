@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContentPublishStatusService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let ContentPublishStatusService = class ContentPublishStatusService {
+let ContentPublishStatusService = exports.ContentPublishStatusService = class ContentPublishStatusService {
     async getPublishStatus(user, workspaceId) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         const { data: posts, error } = await supabase
@@ -53,7 +53,6 @@ let ContentPublishStatusService = class ContentPublishStatusService {
         return { workspaceId, posts: postList, ...counts };
     }
 };
-exports.ContentPublishStatusService = ContentPublishStatusService;
 exports.ContentPublishStatusService = ContentPublishStatusService = __decorate([
     (0, common_1.Injectable)()
 ], ContentPublishStatusService);

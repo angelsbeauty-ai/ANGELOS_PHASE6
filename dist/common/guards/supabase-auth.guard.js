@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SupabaseAuthGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_js_1 = require("@supabase/supabase-js");
-let SupabaseAuthGuard = class SupabaseAuthGuard {
+let SupabaseAuthGuard = exports.SupabaseAuthGuard = class SupabaseAuthGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const authorization = request.headers.authorization;
@@ -39,7 +39,6 @@ let SupabaseAuthGuard = class SupabaseAuthGuard {
         return true;
     }
 };
-exports.SupabaseAuthGuard = SupabaseAuthGuard;
 exports.SupabaseAuthGuard = SupabaseAuthGuard = __decorate([
     (0, common_1.Injectable)()
 ], SupabaseAuthGuard);

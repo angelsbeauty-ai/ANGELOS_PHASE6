@@ -11,9 +11,8 @@ const common_1 = require("@nestjs/common");
 const ai_module_1 = require("../ai/ai.module");
 const analytics_controller_1 = require("./analytics.controller");
 const analytics_service_1 = require("./analytics.service");
-let AnalyticsModule = class AnalyticsModule {
+let AnalyticsModule = exports.AnalyticsModule = class AnalyticsModule {
 };
-exports.AnalyticsModule = AnalyticsModule;
 exports.AnalyticsModule = AnalyticsModule = __decorate([
     (0, common_1.Module)({
         imports: [ai_module_1.AiModule],

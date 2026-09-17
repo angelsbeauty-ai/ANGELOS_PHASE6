@@ -8,7 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthService = void 0;
 const common_1 = require("@nestjs/common");
-let HealthService = class HealthService {
+let HealthService = exports.HealthService = class HealthService {
     liveness() {
         return {
             status: 'healthy',
@@ -29,7 +29,6 @@ let HealthService = class HealthService {
         };
     }
 };
-exports.HealthService = HealthService;
 exports.HealthService = HealthService = __decorate([
     (0, common_1.Injectable)()
 ], HealthService);

@@ -16,7 +16,7 @@ const supabase_1 = require("../config/supabase");
 const action_planner_1 = require("./action-planner");
 const angelos_operating_contract_1 = require("./angelos-operating-contract");
 const ai_provider_service_1 = require("./ai-provider.service");
-let AiService = AiService_1 = class AiService {
+let AiService = exports.AiService = AiService_1 = class AiService {
     provider;
     logger = new common_1.Logger(AiService_1.name);
     constructor(provider) {
@@ -529,7 +529,6 @@ let AiService = AiService_1 = class AiService {
         return { verified: false, reason: 'No verifier registered' };
     }
 };
-exports.AiService = AiService;
 exports.AiService = AiService = AiService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [ai_provider_service_1.AiProviderService])

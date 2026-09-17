@@ -23,7 +23,7 @@ const founder_service_1 = require("./founder.service");
 const beta_service_1 = require("../beta/beta.service");
 const create_beta_invite_dto_1 = require("../beta/dto/create-beta-invite.dto");
 const update_beta_feedback_dto_1 = require("../beta/dto/update-beta-feedback.dto");
-let FounderController = class FounderController {
+let FounderController = exports.FounderController = class FounderController {
     founder;
     beta;
     constructor(founder, beta) {
@@ -46,7 +46,6 @@ let FounderController = class FounderController {
     createDiscount(user, dto) { return this.founder.createStudentDiscount(user, dto); }
     revokeDiscount(id) { return this.founder.revokeStudentDiscount(id); }
 };
-exports.FounderController = FounderController;
 __decorate([
     (0, common_1.Get)('me'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

@@ -9,9 +9,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DbMigrationModule = void 0;
 const common_1 = require("@nestjs/common");
 const db_migration_controller_1 = require("./db-migration.controller");
-let DbMigrationModule = class DbMigrationModule {
+let DbMigrationModule = exports.DbMigrationModule = class DbMigrationModule {
 };
-exports.DbMigrationModule = DbMigrationModule;
 exports.DbMigrationModule = DbMigrationModule = __decorate([
     (0, common_1.Module)({
         controllers: [db_migration_controller_1.DbMigrationController],

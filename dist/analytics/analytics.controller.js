@@ -20,7 +20,7 @@ const analytics_service_1 = require("./analytics.service");
 const record_audience_activity_dto_1 = require("./dto/record-audience-activity.dto");
 const record_content_metrics_dto_1 = require("./dto/record-content-metrics.dto");
 const update_marketing_profile_dto_1 = require("./dto/update-marketing-profile.dto");
-let AnalyticsController = class AnalyticsController {
+let AnalyticsController = exports.AnalyticsController = class AnalyticsController {
     analytics;
     constructor(analytics) {
         this.analytics = analytics;
@@ -44,7 +44,6 @@ let AnalyticsController = class AnalyticsController {
         return this.analytics.marketingCoach(user, workspaceId, Number(days ?? 30));
     }
 };
-exports.AnalyticsController = AnalyticsController;
 __decorate([
     (0, common_1.Get)('overview'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

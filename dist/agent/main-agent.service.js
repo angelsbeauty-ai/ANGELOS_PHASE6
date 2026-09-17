@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MainAgentService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let MainAgentService = class MainAgentService {
+let MainAgentService = exports.MainAgentService = class MainAgentService {
     async handleRequest(request) {
         const message = request.userMessage.trim();
         if (!message) {
@@ -114,7 +114,6 @@ let MainAgentService = class MainAgentService {
         return responses[intent] || responses.general;
     }
 };
-exports.MainAgentService = MainAgentService;
 exports.MainAgentService = MainAgentService = __decorate([
     (0, common_1.Injectable)()
 ], MainAgentService);

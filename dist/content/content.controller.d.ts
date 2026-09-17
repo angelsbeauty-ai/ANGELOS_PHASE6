@@ -22,7 +22,7 @@ export declare class ContentController {
         variant: any;
         published: boolean;
         duplicatePrevented: boolean;
-        verification?: Record<string, any>;
+        verification?: Record<string, any> | undefined;
     }>;
     publishStatus(user: AuthUser, workspaceId: string): Promise<{
         id: any;

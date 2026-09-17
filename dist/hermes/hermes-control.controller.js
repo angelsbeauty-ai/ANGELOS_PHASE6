@@ -18,7 +18,7 @@ const hermes_task_service_1 = require("./hermes-task.service");
 const hermes_control_service_1 = require("./hermes-control.service");
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
-let HermesControlController = class HermesControlController {
+let HermesControlController = exports.HermesControlController = class HermesControlController {
     hermesTask;
     hermesControl;
     constructor(hermesTask, hermesControl) {
@@ -57,7 +57,6 @@ let HermesControlController = class HermesControlController {
         return this.hermesControl.getOverviewAsSystem(workspaceId);
     }
 };
-exports.HermesControlController = HermesControlController;
 __decorate([
     (0, common_1.Post)('tasks'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BetaAccessGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let BetaAccessGuard = class BetaAccessGuard {
+let BetaAccessGuard = exports.BetaAccessGuard = class BetaAccessGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const method = String(request.method ?? 'GET').toUpperCase();
@@ -54,7 +54,6 @@ let BetaAccessGuard = class BetaAccessGuard {
         throw new common_1.ForbiddenException('This workspace is no longer approved for the private AngelOS beta. Your data remains protected and readable, but business-changing actions are disabled.');
     }
 };
-exports.BetaAccessGuard = BetaAccessGuard;
 exports.BetaAccessGuard = BetaAccessGuard = __decorate([
     (0, common_1.Injectable)()
 ], BetaAccessGuard);

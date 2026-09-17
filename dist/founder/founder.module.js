@@ -12,9 +12,8 @@ const founder_controller_1 = require("./founder.controller");
 const founder_guard_1 = require("./founder.guard");
 const founder_service_1 = require("./founder.service");
 const beta_module_1 = require("../beta/beta.module");
-let FounderModule = class FounderModule {
+let FounderModule = exports.FounderModule = class FounderModule {
 };
-exports.FounderModule = FounderModule;
 exports.FounderModule = FounderModule = __decorate([
     (0, common_1.Module)({ imports: [beta_module_1.BetaModule], controllers: [founder_controller_1.FounderController], providers: [founder_guard_1.FounderGuard, founder_service_1.FounderService] })
 ], FounderModule);

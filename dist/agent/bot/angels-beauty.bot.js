@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AngelsBeautyBot = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let AngelsBeautyBot = class AngelsBeautyBot {
+let AngelsBeautyBot = exports.AngelsBeautyBot = class AngelsBeautyBot {
     botName = 'angels_beauty';
     subAgent = 'angels-beauty-crm';
     async execute(taskId, intent, description) {
@@ -43,7 +43,6 @@ let AngelsBeautyBot = class AngelsBeautyBot {
         };
     }
 };
-exports.AngelsBeautyBot = AngelsBeautyBot;
 exports.AngelsBeautyBot = AngelsBeautyBot = __decorate([
     (0, common_1.Injectable)()
 ], AngelsBeautyBot);

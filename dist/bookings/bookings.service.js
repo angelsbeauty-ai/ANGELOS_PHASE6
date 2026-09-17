@@ -16,7 +16,7 @@ const automations_service_1 = require("../automations/automations.service");
 const node_crypto_1 = require("node:crypto");
 const ACTIVE_APPOINTMENT_STATUSES = ['confirmation_pending', 'confirmed', 'arrival_info_sent', 'checked_in'];
 const HARD_BLOCK_TYPES = new Set(['hard', 'personal']);
-let BookingsService = class BookingsService {
+let BookingsService = exports.BookingsService = class BookingsService {
     automations;
     constructor(automations) {
         this.automations = automations;
@@ -129,9 +129,9 @@ let BookingsService = class BookingsService {
         if (!(windowStart < windowEnd))
             throw new common_1.ConflictException('Invalid availability window');
         const step = dto.stepMinutes ?? 30;
-        const busyBefore = service.buffer_before_minutes * 60_000;
-        const busyAfter = service.buffer_after_minutes * 60_000;
-        const duration = service.duration_minutes * 60_000;
+        const busyBefore = service.buffer_before_minutes * 60000;
+        const busyAfter = service.buffer_after_minutes * 60000;
+        const duration = service.duration_minutes * 60000;
         const rangeStart = new Date(windowStart.getTime() - busyBefore);
         const rangeEnd = new Date(windowEnd.getTime() + busyAfter);
         const [appointments, blocks, workspaceResult, hoursResult] = await Promise.all([
@@ -150,7 +150,7 @@ let BookingsService = class BookingsService {
             throw new common_1.InternalServerErrorException(hoursResult.error.message);
         const hoursRows = hoursResult.data ?? [];
         const slots = [];
-        for (let cursor = windowStart.getTime(); cursor + duration <= windowEnd.getTime(); cursor += step * 60_000) {
+        for (let cursor = windowStart.getTime(); cursor + duration <= windowEnd.getTime(); cursor += step * 60000) {
             const start = new Date(cursor);
             const end = new Date(cursor + duration);
             const busyStart = new Date(cursor - busyBefore);
@@ -371,7 +371,6 @@ let BookingsService = class BookingsService {
             throw new common_1.InternalServerErrorException(`Appointment changed, but history log failed: ${error.message}`);
     }
 };
-exports.BookingsService = BookingsService;
 exports.BookingsService = BookingsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [automations_service_1.AutomationsService])
@@ -384,9 +383,9 @@ function appointmentTimes(service, startAt) {
     const start = new Date(startAt);
     if (Number.isNaN(start.getTime()))
         throw new common_1.ConflictException('Invalid appointment start time');
-    const end = new Date(start.getTime() + service.duration_minutes * 60_000);
-    const busyStart = new Date(start.getTime() - service.buffer_before_minutes * 60_000);
-    const busyEnd = new Date(end.getTime() + service.buffer_after_minutes * 60_000);
+    const end = new Date(start.getTime() + service.duration_minutes * 60000);
+    const busyStart = new Date(start.getTime() - service.buffer_before_minutes * 60000);
+    const busyEnd = new Date(end.getTime() + service.buffer_after_minutes * 60000);
     return { start, end, busyStart, busyEnd };
 }
 function workingHoursConflictFromRows(start, end, timeZone, hours) {

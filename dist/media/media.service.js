@@ -11,7 +11,7 @@ const node_crypto_1 = require("node:crypto");
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const MEDIA_BUCKET = 'angelos-media';
-let MediaService = class MediaService {
+let MediaService = exports.MediaService = class MediaService {
     async list(user, workspaceId, filters) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         let query = supabase
@@ -158,7 +158,6 @@ let MediaService = class MediaService {
         return data;
     }
 };
-exports.MediaService = MediaService;
 exports.MediaService = MediaService = __decorate([
     (0, common_1.Injectable)()
 ], MediaService);

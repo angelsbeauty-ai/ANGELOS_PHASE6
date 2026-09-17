@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublishingAdapterRegistry = void 0;
 const common_1 = require("@nestjs/common");
 const publishing_adapter_1 = require("./publishing-adapter");
-let PublishingAdapterRegistry = class PublishingAdapterRegistry {
+let PublishingAdapterRegistry = exports.PublishingAdapterRegistry = class PublishingAdapterRegistry {
     adapters = new Map();
     onModuleInit() {
         this.adapters.set('manual', new publishing_adapter_1.ManualDemoPublishingAdapter());
@@ -27,7 +27,6 @@ let PublishingAdapterRegistry = class PublishingAdapterRegistry {
         return Array.from(this.adapters.keys()).filter(p => p !== 'manual');
     }
 };
-exports.PublishingAdapterRegistry = PublishingAdapterRegistry;
 exports.PublishingAdapterRegistry = PublishingAdapterRegistry = __decorate([
     (0, common_1.Injectable)()
 ], PublishingAdapterRegistry);

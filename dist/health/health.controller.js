@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
 const health_service_1 = require("./health.service");
-let HealthController = class HealthController {
+let HealthController = exports.HealthController = class HealthController {
     healthService;
     constructor(healthService) {
         this.healthService = healthService;
@@ -27,7 +27,6 @@ let HealthController = class HealthController {
         return result;
     }
 };
-exports.HealthController = HealthController;
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),

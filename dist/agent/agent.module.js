@@ -18,9 +18,8 @@ const angels_beauty_bot_1 = require("./bot/angels-beauty.bot");
 const academy_bot_1 = require("./bot/academy.bot");
 const angelos_bot_1 = require("./bot/angelos.bot");
 const general_bot_1 = require("./bot/general.bot");
-let AgentModule = class AgentModule {
+let AgentModule = exports.AgentModule = class AgentModule {
 };
-exports.AgentModule = AgentModule;
 exports.AgentModule = AgentModule = __decorate([
     (0, common_1.Module)({
         controllers: [agent_controller_1.AgentController, agent_controller_1.AgentHealthController],

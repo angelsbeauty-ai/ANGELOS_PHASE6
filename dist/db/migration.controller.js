@@ -16,7 +16,7 @@ exports.DbMigrationModule = exports.DbMigrationController = exports.DbMigrationS
 const common_1 = require("@nestjs/common");
 const common_2 = require("@nestjs/common");
 const crypto = require("crypto");
-let DbMigrationService = class DbMigrationService {
+let DbMigrationService = exports.DbMigrationService = class DbMigrationService {
     pgHost;
     pgPort;
     pgUser;
@@ -101,12 +101,11 @@ let DbMigrationService = class DbMigrationService {
         }
     }
 };
-exports.DbMigrationService = DbMigrationService;
 exports.DbMigrationService = DbMigrationService = __decorate([
     (0, common_2.Injectable)(),
     __metadata("design:paramtypes", [])
 ], DbMigrationService);
-let DbMigrationController = class DbMigrationController {
+let DbMigrationController = exports.DbMigrationController = class DbMigrationController {
     dbMigrationService;
     constructor(dbMigrationService) {
         this.dbMigrationService = dbMigrationService;
@@ -159,7 +158,6 @@ let DbMigrationController = class DbMigrationController {
         return this.dbMigrationService.runMigration(sql, idempotencyKey);
     }
 };
-exports.DbMigrationController = DbMigrationController;
 __decorate([
     (0, common_1.Get)('test-connection'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
@@ -181,9 +179,8 @@ exports.DbMigrationController = DbMigrationController = __decorate([
     (0, common_1.Controller)('db'),
     __metadata("design:paramtypes", [DbMigrationService])
 ], DbMigrationController);
-let DbMigrationModule = class DbMigrationModule {
+let DbMigrationModule = exports.DbMigrationModule = class DbMigrationModule {
 };
-exports.DbMigrationModule = DbMigrationModule;
 exports.DbMigrationModule = DbMigrationModule = __decorate([
     (0, common_2.Module)({
         controllers: [DbMigrationController],

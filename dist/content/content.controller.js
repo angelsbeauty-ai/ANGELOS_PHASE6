@@ -21,7 +21,7 @@ const create_content_draft_dto_1 = require("./dto/create-content-draft.dto");
 const review_content_media_dto_1 = require("./dto/review-content-media.dto");
 const schedule_content_variant_dto_1 = require("./dto/schedule-content-variant.dto");
 const update_content_variant_dto_1 = require("./dto/update-content-variant.dto");
-let ContentController = class ContentController {
+let ContentController = exports.ContentController = class ContentController {
     content;
     constructor(content) {
         this.content = content;
@@ -54,7 +54,6 @@ let ContentController = class ContentController {
         return this.content.getPublishStatus(user, workspaceId);
     }
 };
-exports.ContentController = ContentController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

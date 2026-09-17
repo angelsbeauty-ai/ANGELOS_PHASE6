@@ -8,7 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.N8nSecretGuard = void 0;
 const common_1 = require("@nestjs/common");
-let N8nSecretGuard = class N8nSecretGuard {
+let N8nSecretGuard = exports.N8nSecretGuard = class N8nSecretGuard {
     canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const headerSecret = request.headers['x-n8n-secret'];
@@ -22,7 +22,6 @@ let N8nSecretGuard = class N8nSecretGuard {
         return true;
     }
 };
-exports.N8nSecretGuard = N8nSecretGuard;
 exports.N8nSecretGuard = N8nSecretGuard = __decorate([
     (0, common_1.Injectable)()
 ], N8nSecretGuard);

@@ -23,7 +23,7 @@ export declare class ContentService {
         variant: any;
         published: boolean;
         duplicatePrevented: boolean;
-        verification?: Record<string, any>;
+        verification?: Record<string, any> | undefined;
     }>;
     getPublishStatus(user: AuthUser, workspaceId: string): Promise<{
         id: any;

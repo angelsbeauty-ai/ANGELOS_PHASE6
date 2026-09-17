@@ -10,9 +10,8 @@ exports.ProductAnalyticsModule = void 0;
 const common_1 = require("@nestjs/common");
 const product_analytics_controller_1 = require("./product-analytics.controller");
 const product_analytics_service_1 = require("./product-analytics.service");
-let ProductAnalyticsModule = class ProductAnalyticsModule {
+let ProductAnalyticsModule = exports.ProductAnalyticsModule = class ProductAnalyticsModule {
 };
-exports.ProductAnalyticsModule = ProductAnalyticsModule;
 exports.ProductAnalyticsModule = ProductAnalyticsModule = __decorate([
     (0, common_1.Module)({ controllers: [product_analytics_controller_1.ProductAnalyticsController], providers: [product_analytics_service_1.ProductAnalyticsService] })
 ], ProductAnalyticsModule);

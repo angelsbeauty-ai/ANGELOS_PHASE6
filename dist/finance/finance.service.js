@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FinanceService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let FinanceService = class FinanceService {
+let FinanceService = exports.FinanceService = class FinanceService {
     async recordEntry(user, workspaceId, dto) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         const { data: client, error: clientError } = await supabase.from('clients').select('id').eq('workspace_id', workspaceId).eq('id', dto.clientId).single();
@@ -83,7 +83,6 @@ let FinanceService = class FinanceService {
         return { days: safeDays, actualIncome, byMethod, entries: rows.slice(0, 100) };
     }
 };
-exports.FinanceService = FinanceService;
 exports.FinanceService = FinanceService = __decorate([
     (0, common_1.Injectable)()
 ], FinanceService);

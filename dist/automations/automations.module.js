@@ -10,9 +10,8 @@ exports.AutomationsModule = void 0;
 const common_1 = require("@nestjs/common");
 const automations_controller_1 = require("./automations.controller");
 const automations_service_1 = require("./automations.service");
-let AutomationsModule = class AutomationsModule {
+let AutomationsModule = exports.AutomationsModule = class AutomationsModule {
 };
-exports.AutomationsModule = AutomationsModule;
 exports.AutomationsModule = AutomationsModule = __decorate([
     (0, common_1.Module)({
         controllers: [automations_controller_1.AutomationsController],

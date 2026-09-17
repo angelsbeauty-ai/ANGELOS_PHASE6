@@ -31,8 +31,8 @@ export declare class SubscriptionsService {
     selectPlan(user: AuthUser, workspaceId: string, billingInterval: 'monthly' | 'yearly'): Promise<{
         checkout: {
             mode: "checkout" | "not_configured";
-            url?: string;
-            message?: string;
+            url?: string | undefined;
+            message?: string | undefined;
         };
         preview: {
             currency: any;

@@ -16,7 +16,7 @@ const DEFAULT_RULES = [
     { name: 'Treatment recorded — aftercare', category: 'aftercare', trigger_type: 'treatment_recorded', action_type: 'create_followup', delay_minutes: 0, routine_category: 'aftercare', action_config: { reason: 'Client just had a treatment recorded. Send approved aftercare and check they received it.' } },
     { name: 'Treatment recorded — follow-up', category: 'followup', trigger_type: 'treatment_recorded', action_type: 'create_followup', delay_minutes: 0, routine_category: 'follow_up', action_config: { reason: 'Treatment recorded. Flag for owner follow-up if the client has open needs.' } },
 ];
-let AutomationsService = class AutomationsService {
+let AutomationsService = exports.AutomationsService = class AutomationsService {
     async seedDefaults(user, workspaceId) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         const { data: existing, error } = await supabase.from('automation_rules').select('name').eq('workspace_id', workspaceId);
@@ -216,7 +216,6 @@ let AutomationsService = class AutomationsService {
         return data;
     }
 };
-exports.AutomationsService = AutomationsService;
 exports.AutomationsService = AutomationsService = __decorate([
     (0, common_1.Injectable)()
 ], AutomationsService);

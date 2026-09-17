@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.N8nHermesService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let N8nHermesService = class N8nHermesService {
+let N8nHermesService = exports.N8nHermesService = class N8nHermesService {
     async createTask(body) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const workspaceId = body.workspaceId || 'default';
@@ -110,7 +110,6 @@ let N8nHermesService = class N8nHermesService {
         return executor.execute({ taskId, model, timeoutMs });
     }
 };
-exports.N8nHermesService = N8nHermesService;
 exports.N8nHermesService = N8nHermesService = __decorate([
     (0, common_1.Injectable)()
 ], N8nHermesService);

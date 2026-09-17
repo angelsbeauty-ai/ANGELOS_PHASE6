@@ -1,3 +1,5 @@
+/// <reference types="node" />
+/// <reference types="node" />
 import type { Request, Response } from 'express';
 import { MessagingService } from './messaging.service';
 export declare class MetaWebhookController {

@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HermesBuilderResultRecorder = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let HermesBuilderResultRecorder = class HermesBuilderResultRecorder {
+let HermesBuilderResultRecorder = exports.HermesBuilderResultRecorder = class HermesBuilderResultRecorder {
     async recordResult(taskId, executionId, result, error) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         const status = error ? 'failed' : 'done';
@@ -57,7 +57,6 @@ let HermesBuilderResultRecorder = class HermesBuilderResultRecorder {
         }).catch(() => { });
     }
 };
-exports.HermesBuilderResultRecorder = HermesBuilderResultRecorder;
 exports.HermesBuilderResultRecorder = HermesBuilderResultRecorder = __decorate([
     (0, common_1.Injectable)()
 ], HermesBuilderResultRecorder);

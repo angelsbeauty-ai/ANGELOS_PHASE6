@@ -10,7 +10,7 @@ exports.BetaService = void 0;
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const supabase_1 = require("../config/supabase");
-let BetaService = class BetaService {
+let BetaService = exports.BetaService = class BetaService {
     async isFounder(userId) {
         const envFounders = String(process.env.FOUNDER_USER_IDS ?? '').split(',').map((v) => v.trim()).filter(Boolean);
         const service = (0, supabase_1.createServiceSupabaseClient)();
@@ -215,7 +215,6 @@ let BetaService = class BetaService {
         };
     }
 };
-exports.BetaService = BetaService;
 exports.BetaService = BetaService = __decorate([
     (0, common_1.Injectable)()
 ], BetaService);

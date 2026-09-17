@@ -6,8 +6,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HermesTaskService = void 0;
-exports.validateBoundedCodexTask = validateBoundedCodexTask;
+exports.HermesTaskService = exports.validateBoundedCodexTask = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 function isCodexIntent(intent) {
@@ -46,7 +45,8 @@ function validateBoundedCodexTask(body) {
     });
     return { files: normalizedFiles, acceptance_criteria: normalizedCriteria };
 }
-let HermesTaskService = class HermesTaskService {
+exports.validateBoundedCodexTask = validateBoundedCodexTask;
+let HermesTaskService = exports.HermesTaskService = class HermesTaskService {
     async workspaceId(user) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         const { data, error } = await supabase
@@ -168,7 +168,6 @@ let HermesTaskService = class HermesTaskService {
         return data;
     }
 };
-exports.HermesTaskService = HermesTaskService;
 exports.HermesTaskService = HermesTaskService = __decorate([
     (0, common_1.Injectable)()
 ], HermesTaskService);

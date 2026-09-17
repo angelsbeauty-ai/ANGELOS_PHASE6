@@ -18,7 +18,7 @@ const node_crypto_1 = require("node:crypto");
 const supabase_1 = require("../config/supabase");
 const messaging_service_1 = require("./messaging.service");
 const meta_transport_1 = require("./meta-transport");
-let MetaWebhookController = class MetaWebhookController {
+let MetaWebhookController = exports.MetaWebhookController = class MetaWebhookController {
     messaging;
     constructor(messaging) {
         this.messaging = messaging;
@@ -91,7 +91,6 @@ let MetaWebhookController = class MetaWebhookController {
         return data ?? null;
     }
 };
-exports.MetaWebhookController = MetaWebhookController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('hub.mode')),

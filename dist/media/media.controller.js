@@ -19,7 +19,7 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const create_media_upload_dto_1 = require("./dto/create-media-upload.dto");
 const update_media_asset_dto_1 = require("./dto/update-media-asset.dto");
 const media_service_1 = require("./media.service");
-let MediaController = class MediaController {
+let MediaController = exports.MediaController = class MediaController {
     media;
     constructor(media) {
         this.media = media;
@@ -43,7 +43,6 @@ let MediaController = class MediaController {
         return this.media.update(user, workspaceId, assetId, dto);
     }
 };
-exports.MediaController = MediaController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

@@ -12,9 +12,8 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const workspaces_controller_1 = require("./workspaces.controller");
 const workspaces_service_1 = require("./workspaces.service");
 const beta_module_1 = require("../beta/beta.module");
-let WorkspacesModule = class WorkspacesModule {
+let WorkspacesModule = exports.WorkspacesModule = class WorkspacesModule {
 };
-exports.WorkspacesModule = WorkspacesModule;
 exports.WorkspacesModule = WorkspacesModule = __decorate([
     (0, common_1.Module)({
         imports: [beta_module_1.BetaModule],

@@ -18,7 +18,7 @@ const hermes_system_service_1 = require("./hermes-system.service");
 const hermes_control_service_1 = require("./hermes-control.service");
 const hermes_builder_executor_service_1 = require("./hermes-builder-executor.service");
 const n8nsecret_guard_1 = require("../common/guards/n8nsecret.guard");
-let N8nHermesController = class N8nHermesController {
+let N8nHermesController = exports.N8nHermesController = class N8nHermesController {
     systemTaskService;
     controlService;
     builderExecutor;
@@ -43,7 +43,6 @@ let N8nHermesController = class N8nHermesController {
         return this.builderExecutor.execute(body);
     }
 };
-exports.N8nHermesController = N8nHermesController;
 __decorate([
     (0, common_1.Post)('tasks'),
     __param(0, (0, common_1.Param)('workspaceId')),

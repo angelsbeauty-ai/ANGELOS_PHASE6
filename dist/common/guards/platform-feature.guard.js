@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlatformFeatureGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../../config/supabase");
-let PlatformFeatureGuard = class PlatformFeatureGuard {
+let PlatformFeatureGuard = exports.PlatformFeatureGuard = class PlatformFeatureGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const method = String(request.method ?? 'GET').toUpperCase();
@@ -54,7 +54,6 @@ let PlatformFeatureGuard = class PlatformFeatureGuard {
         return null;
     }
 };
-exports.PlatformFeatureGuard = PlatformFeatureGuard;
 exports.PlatformFeatureGuard = PlatformFeatureGuard = __decorate([
     (0, common_1.Injectable)()
 ], PlatformFeatureGuard);

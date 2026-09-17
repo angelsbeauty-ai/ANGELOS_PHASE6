@@ -13,7 +13,7 @@ exports.WorkspacesService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const beta_service_1 = require("../beta/beta.service");
-let WorkspacesService = class WorkspacesService {
+let WorkspacesService = exports.WorkspacesService = class WorkspacesService {
     beta;
     constructor(beta) {
         this.beta = beta;
@@ -48,7 +48,6 @@ let WorkspacesService = class WorkspacesService {
         return data?.map((row) => row.workspace).filter(Boolean) ?? [];
     }
 };
-exports.WorkspacesService = WorkspacesService;
 exports.WorkspacesService = WorkspacesService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [beta_service_1.BetaService])

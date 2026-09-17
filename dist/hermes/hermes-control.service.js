@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HermesControlService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let HermesControlService = class HermesControlService {
+let HermesControlService = exports.HermesControlService = class HermesControlService {
     async getOverviewAsSystem(workspaceId) {
         const supabase = (0, supabase_1.createServiceSupabaseClient)();
         return this.getOverviewFromSupabase(workspaceId, supabase);
@@ -57,7 +57,6 @@ let HermesControlService = class HermesControlService {
         };
     }
 };
-exports.HermesControlService = HermesControlService;
 exports.HermesControlService = HermesControlService = __decorate([
     (0, common_1.Injectable)()
 ], HermesControlService);

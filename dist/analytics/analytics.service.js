@@ -13,7 +13,7 @@ exports.AnalyticsService = void 0;
 const common_1 = require("@nestjs/common");
 const ai_provider_service_1 = require("../ai/ai-provider.service");
 const supabase_1 = require("../config/supabase");
-let AnalyticsService = class AnalyticsService {
+let AnalyticsService = exports.AnalyticsService = class AnalyticsService {
     aiProvider;
     constructor(aiProvider) {
         this.aiProvider = aiProvider;
@@ -249,7 +249,6 @@ let AnalyticsService = class AnalyticsService {
         return { recommendation, confidence, provider, model, evidence: overview };
     }
 };
-exports.AnalyticsService = AnalyticsService;
 exports.AnalyticsService = AnalyticsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [ai_provider_service_1.AiProviderService])

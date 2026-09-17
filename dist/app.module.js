@@ -13,9 +13,8 @@ const config_1 = require("@nestjs/config");
 const dbrexec_module_1 = require("./db/dbrexec.module");
 const workspaces_module_1 = require("./workspaces/workspaces.module");
 const hermes_module_1 = require("./hermes/hermes.module");
-let AppModule = class AppModule {
+let AppModule = exports.AppModule = class AppModule {
 };
-exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [

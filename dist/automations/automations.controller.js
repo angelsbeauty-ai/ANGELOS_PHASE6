@@ -18,7 +18,7 @@ const current_user_decorator_1 = require("../common/decorators/current-user.deco
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const automations_service_1 = require("./automations.service");
 const update_automation_rule_dto_1 = require("./dto/update-automation-rule.dto");
-let AutomationsController = class AutomationsController {
+let AutomationsController = exports.AutomationsController = class AutomationsController {
     automations;
     constructor(automations) {
         this.automations = automations;
@@ -29,7 +29,6 @@ let AutomationsController = class AutomationsController {
     jobs(user, workspaceId) { return this.automations.listJobs(user, workspaceId); }
     process(user, workspaceId, limit) { return this.automations.processDue(user, workspaceId, Number(limit ?? 20)); }
 };
-exports.AutomationsController = AutomationsController;
 __decorate([
     (0, common_1.Post)('seed-defaults'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

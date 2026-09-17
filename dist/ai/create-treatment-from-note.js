@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createTreatmentFromNote = createTreatmentFromNote;
+exports.createTreatmentFromNote = void 0;
 const supabase_1 = require("../config/supabase");
 async function createTreatmentFromNote(note, clientId, userId, workspaceId) {
     const supabase = (0, supabase_1.createServiceSupabaseClient)();
@@ -18,4 +18,5 @@ async function createTreatmentFromNote(note, clientId, userId, workspaceId) {
         return { id: '', error: error.message };
     return { id: data.id, error: undefined };
 }
+exports.createTreatmentFromNote = createTreatmentFromNote;
 //# sourceMappingURL=create-treatment-from-note.js.map

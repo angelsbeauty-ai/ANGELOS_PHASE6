@@ -18,7 +18,7 @@ class SendVoiceMessageDto {
 exports.SendVoiceMessageDto = SendVoiceMessageDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.Length)(1, 10_000_000),
+    (0, class_validator_1.Length)(1, 10000000),
     __metadata("design:type", String)
 ], SendVoiceMessageDto.prototype, "audioBase64", void 0);
 __decorate([

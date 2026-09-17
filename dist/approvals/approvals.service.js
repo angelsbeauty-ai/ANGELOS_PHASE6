@@ -13,7 +13,7 @@ exports.ApprovalsService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const staging_message_execution_service_1 = require("../messaging/staging-message-execution.service");
-let ApprovalsService = class ApprovalsService {
+let ApprovalsService = exports.ApprovalsService = class ApprovalsService {
     stagingExecution;
     constructor(stagingExecution) {
         this.stagingExecution = stagingExecution;
@@ -244,7 +244,6 @@ let ApprovalsService = class ApprovalsService {
         return data ?? [];
     }
 };
-exports.ApprovalsService = ApprovalsService;
 exports.ApprovalsService = ApprovalsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [staging_message_execution_service_1.StagingMessageExecutionService])

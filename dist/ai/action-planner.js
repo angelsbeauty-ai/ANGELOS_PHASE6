@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planSafeAssistantAction = planSafeAssistantAction;
+exports.planSafeAssistantAction = void 0;
 function planSafeAssistantAction(message) {
     const renameMatch = message.match(/(?:call yourself|your name is|rename yourself to)\s+["“]?([^"”.,!?\n]{2,40})/i);
     if (renameMatch?.[1]) {
@@ -26,4 +26,5 @@ function planSafeAssistantAction(message) {
     }
     return null;
 }
+exports.planSafeAssistantAction = planSafeAssistantAction;
 //# sourceMappingURL=action-planner.js.map

@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SystemHealthService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let SystemHealthService = class SystemHealthService {
+let SystemHealthService = exports.SystemHealthService = class SystemHealthService {
     async getOverview(user, workspaceId) {
         const supabase = (0, supabase_1.createUserSupabaseClient)(user.accessToken);
         await this.assertWorkspaceAccess(supabase, workspaceId);
@@ -302,7 +302,6 @@ let SystemHealthService = class SystemHealthService {
             throw new common_1.NotFoundException('Workspace not found');
     }
 };
-exports.SystemHealthService = SystemHealthService;
 exports.SystemHealthService = SystemHealthService = __decorate([
     (0, common_1.Injectable)()
 ], SystemHealthService);

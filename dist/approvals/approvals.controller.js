@@ -17,7 +17,7 @@ const common_1 = require("@nestjs/common");
 const approvals_service_1 = require("./approvals.service");
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
-let ApprovalsController = class ApprovalsController {
+let ApprovalsController = exports.ApprovalsController = class ApprovalsController {
     approvalsService;
     constructor(approvalsService) {
         this.approvalsService = approvalsService;
@@ -82,7 +82,6 @@ let ApprovalsController = class ApprovalsController {
         return this.approvalsService.getApprovalById(user, id, workspaceId);
     }
 };
-exports.ApprovalsController = ApprovalsController;
 __decorate([
     (0, common_1.Post)('message'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

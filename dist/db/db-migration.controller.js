@@ -18,7 +18,7 @@ const common_1 = require("@nestjs/common");
 const common_2 = require("@nestjs/common");
 const fs = require("fs");
 const path = require("path");
-let DbMigrationService = DbMigrationService_1 = class DbMigrationService {
+let DbMigrationService = exports.DbMigrationService = DbMigrationService_1 = class DbMigrationService {
     logger = new common_1.Logger(DbMigrationService_1.name);
     dbHost = 'aws-0-ap-southeast-1.pooler.supabase.com';
     dbPort = 6543;
@@ -105,11 +105,10 @@ let DbMigrationService = DbMigrationService_1 = class DbMigrationService {
         }
     }
 };
-exports.DbMigrationService = DbMigrationService;
 exports.DbMigrationService = DbMigrationService = DbMigrationService_1 = __decorate([
     (0, common_2.Injectable)()
 ], DbMigrationService);
-let DbMigrationController = DbMigrationController_1 = class DbMigrationController {
+let DbMigrationController = exports.DbMigrationController = DbMigrationController_1 = class DbMigrationController {
     service;
     logger = new common_1.Logger(DbMigrationController_1.name);
     constructor(service) {
@@ -248,7 +247,6 @@ let DbMigrationController = DbMigrationController_1 = class DbMigrationControlle
         return this.runMigrations(body, token);
     }
 };
-exports.DbMigrationController = DbMigrationController;
 __decorate([
     (0, common_1.Get)('test-connection'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

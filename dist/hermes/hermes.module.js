@@ -18,9 +18,8 @@ const n8n_callback_service_1 = require("./n8n-callback.service");
 const hermes_builder_executor_service_1 = require("./hermes-builder-executor.service");
 const hermes_builder_result_recorder_service_1 = require("./hermes-builder-result-recorder.service");
 const hermes_system_service_1 = require("./hermes-system.service");
-let HermesModule = class HermesModule {
+let HermesModule = exports.HermesModule = class HermesModule {
 };
-exports.HermesModule = HermesModule;
 exports.HermesModule = HermesModule = __decorate([
     (0, common_1.Module)({
         controllers: [codex_integration_controller_1.CodexIntegrationController, hermes_control_controller_1.HermesControlController, n8n_callback_controller_1.N8nCallbackController, n8n_hermes_controller_1.N8nHermesController],

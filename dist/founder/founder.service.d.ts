@@ -39,9 +39,9 @@ export declare class FounderService {
         attentionCount: number;
         id: string;
         name: string;
-        business_type?: string | null;
-        timezone?: string;
-        currency?: string;
+        business_type?: string | null | undefined;
+        timezone?: string | undefined;
+        currency?: string | undefined;
         created_at: string;
     }[]>;
     featureFlags(): Promise<any[]>;

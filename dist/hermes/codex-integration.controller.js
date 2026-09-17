@@ -19,7 +19,7 @@ const n8nsecret_guard_1 = require("../common/guards/n8nsecret.guard");
 const hermes_task_service_1 = require("./hermes-task.service");
 const uuid = (value) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const terminal = new Set(['done', 'failed', 'timeout', 'cancelled', 'rejected', 'awaiting_approval']);
-let CodexIntegrationController = class CodexIntegrationController {
+let CodexIntegrationController = exports.CodexIntegrationController = class CodexIntegrationController {
     client() { return (0, supabase_1.createServiceSupabaseClient)(); }
     async conversation(workspaceId, conversationId) {
         if (!uuid(workspaceId) || !uuid(conversationId))
@@ -109,7 +109,6 @@ let CodexIntegrationController = class CodexIntegrationController {
         return { delivered: true, task_id: task.id, message_id: task.id, already_delivered: !!error };
     }
 };
-exports.CodexIntegrationController = CodexIntegrationController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Param)('workspaceId')),

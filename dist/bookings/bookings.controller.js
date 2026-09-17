@@ -23,7 +23,7 @@ const reschedule_appointment_dto_1 = require("./dto/reschedule-appointment.dto")
 const create_block_dto_1 = require("./dto/create-block.dto");
 const availability_dto_1 = require("./dto/availability.dto");
 const set_business_hours_dto_1 = require("./dto/set-business-hours.dto");
-let BookingsController = class BookingsController {
+let BookingsController = exports.BookingsController = class BookingsController {
     bookings;
     constructor(bookings) {
         this.bookings = bookings;
@@ -65,7 +65,6 @@ let BookingsController = class BookingsController {
         return this.bookings.reschedule(user, workspaceId, appointmentId, dto);
     }
 };
-exports.BookingsController = BookingsController;
 __decorate([
     (0, common_1.Get)('services'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

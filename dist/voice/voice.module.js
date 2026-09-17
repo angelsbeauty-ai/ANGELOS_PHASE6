@@ -10,9 +10,8 @@ exports.VoiceModule = void 0;
 const common_1 = require("@nestjs/common");
 const voice_controller_1 = require("./voice.controller");
 const voice_service_1 = require("./voice.service");
-let VoiceModule = class VoiceModule {
+let VoiceModule = exports.VoiceModule = class VoiceModule {
 };
-exports.VoiceModule = VoiceModule;
 exports.VoiceModule = VoiceModule = __decorate([
     (0, common_1.Module)({
         controllers: [voice_controller_1.VoiceController],

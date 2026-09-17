@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FounderGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
-let FounderGuard = class FounderGuard {
+let FounderGuard = exports.FounderGuard = class FounderGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const user = request.user;
@@ -25,7 +25,6 @@ let FounderGuard = class FounderGuard {
         return true;
     }
 };
-exports.FounderGuard = FounderGuard;
 exports.FounderGuard = FounderGuard = __decorate([
     (0, common_1.Injectable)()
 ], FounderGuard);

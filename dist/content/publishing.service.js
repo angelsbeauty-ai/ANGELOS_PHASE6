@@ -13,7 +13,7 @@ exports.PublishingService = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_1 = require("../config/supabase");
 const publishing_adapter_registry_1 = require("./publishing-adapter.registry");
-let PublishingService = class PublishingService {
+let PublishingService = exports.PublishingService = class PublishingService {
     registry;
     constructor(registry) {
         this.registry = registry;
@@ -214,7 +214,6 @@ let PublishingService = class PublishingService {
         return data;
     }
 };
-exports.PublishingService = PublishingService;
 exports.PublishingService = PublishingService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [publishing_adapter_registry_1.PublishingAdapterRegistry])

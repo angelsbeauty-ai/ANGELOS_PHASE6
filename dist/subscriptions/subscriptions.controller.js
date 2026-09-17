@@ -19,7 +19,7 @@ const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const change_plan_dto_1 = require("./dto/change-plan.dto");
 const redeem_student_discount_dto_1 = require("./dto/redeem-student-discount.dto");
 const subscriptions_service_1 = require("./subscriptions.service");
-let SubscriptionsController = class SubscriptionsController {
+let SubscriptionsController = exports.SubscriptionsController = class SubscriptionsController {
     subscriptions;
     constructor(subscriptions) {
         this.subscriptions = subscriptions;
@@ -30,7 +30,6 @@ let SubscriptionsController = class SubscriptionsController {
     reactivateDemo(user, workspaceId, dto) { return this.subscriptions.reactivateDemo(user, workspaceId, dto.billingInterval); }
     studentDiscount(user, workspaceId, dto) { return this.subscriptions.redeemStudentDiscount(user, workspaceId, dto.token); }
 };
-exports.SubscriptionsController = SubscriptionsController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

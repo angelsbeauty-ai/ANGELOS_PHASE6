@@ -20,7 +20,7 @@ const learning_rules_service_1 = require("./rules/learning-rules.service");
 const bot_registry_service_1 = require("./bot/bot-registry.service");
 const supabase_auth_guard_1 = require("../common/guards/supabase-auth.guard");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
-let AgentController = class AgentController {
+let AgentController = exports.AgentController = class AgentController {
     mainAgent;
     orchestrator;
     learningRules;
@@ -83,7 +83,6 @@ let AgentController = class AgentController {
         return result;
     }
 };
-exports.AgentController = AgentController;
 __decorate([
     (0, common_1.Post)('chat'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -172,12 +171,11 @@ exports.AgentController = AgentController = __decorate([
         learning_rules_service_1.LearningRulesService,
         bot_registry_service_1.BotRegistry])
 ], AgentController);
-let AgentHealthController = class AgentHealthController {
+let AgentHealthController = exports.AgentHealthController = class AgentHealthController {
     health() {
         return { status: 'ok', component: 'main-agent', phase: 1 };
     }
 };
-exports.AgentHealthController = AgentHealthController;
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),

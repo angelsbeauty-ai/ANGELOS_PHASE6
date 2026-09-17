@@ -14,7 +14,7 @@ const common_1 = require("@nestjs/common");
 const ai_provider_service_1 = require("../ai/ai-provider.service");
 const supabase_1 = require("../config/supabase");
 const publishing_service_1 = require("./publishing.service");
-let ContentService = class ContentService {
+let ContentService = exports.ContentService = class ContentService {
     aiProvider;
     publishing;
     constructor(aiProvider, publishing) {
@@ -237,7 +237,6 @@ let ContentService = class ContentService {
         }));
     }
 };
-exports.ContentService = ContentService;
 exports.ContentService = ContentService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [ai_provider_service_1.AiProviderService,

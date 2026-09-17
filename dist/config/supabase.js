@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createServiceSupabaseClient = createServiceSupabaseClient;
-exports.createUserSupabaseClient = createUserSupabaseClient;
+exports.createUserSupabaseClient = exports.createServiceSupabaseClient = void 0;
 const supabase_js_1 = require("@supabase/supabase-js");
 function createServiceSupabaseClient() {
     const url = process.env.SUPABASE_URL;
@@ -13,6 +12,7 @@ function createServiceSupabaseClient() {
         auth: { persistSession: false, autoRefreshToken: false }
     });
 }
+exports.createServiceSupabaseClient = createServiceSupabaseClient;
 function createUserSupabaseClient(accessToken) {
     const url = process.env.SUPABASE_URL;
     const clientKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
@@ -24,4 +24,5 @@ function createUserSupabaseClient(accessToken) {
         auth: { persistSession: false, autoRefreshToken: false }
     });
 }
+exports.createUserSupabaseClient = createUserSupabaseClient;
 //# sourceMappingURL=supabase.js.map

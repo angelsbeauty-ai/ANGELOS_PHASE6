@@ -21,7 +21,7 @@ const staging_message_execution_service_1 = require("./staging-message-execution
 const meta_transport_1 = require("./meta-transport");
 const line_transport_1 = require("./line-transport");
 const SENSITIVE_PATTERNS = [/complain/i, /refund/i, /unhappy/i, /angry/i, /legal/i, /wrong/i, /scam/i, /emergency/i];
-let MessagingService = class MessagingService {
+let MessagingService = exports.MessagingService = class MessagingService {
     aiProvider;
     stagingExecution;
     manualAdapter = new provider_adapter_1.ManualDemoMessagingAdapter();
@@ -734,7 +734,6 @@ let MessagingService = class MessagingService {
         return { deduplicated: false, threadId, messageId: message.id };
     }
 };
-exports.MessagingService = MessagingService;
 exports.MessagingService = MessagingService = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, common_1.Optional)()),
