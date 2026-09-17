@@ -2,7 +2,7 @@
 # Cache-bust: change this value to force rebuild
 ARG CACHE_BUST=2
 
-FROM node:22-alpine AS build
+FROM node:22-alpine3.193.19 AS build
 WORKDIR /build/apps/api
 COPY apps/api/package.json ./
 COPY apps/api/nest-cli.json ./
@@ -30,7 +30,7 @@ RUN echo "=== Building ===" && npx nest build && \
     echo "=== Build output ===" && ls -la dist/ && \
     echo "=== dist/main.js ===" && ls -la dist/main.js
 
-FROM node:22-alpine
+FROM node:22-alpine3.19
 WORKDIR /app
 COPY --from=build /build/apps/api/node_modules ./node_modules
 COPY --from=build /build/apps/api/dist ./dist
