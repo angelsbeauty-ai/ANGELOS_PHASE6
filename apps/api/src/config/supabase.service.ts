@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
 
 declare global {
   // eslint-disable-next-line
@@ -25,9 +24,10 @@ export class SupabaseService {
 
     const key = `${url}:service`;
     if (!this.clients.has(key)) {
-      this.clients.set(key, createClient(url, serviceRoleKey, {
-        auth: { persistSession: false, autoRefreshToken: false }
-      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const opts: any = { auth: { persistSession: false, autoRefreshToken: false } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.clients.set(key, createClient(url, serviceRoleKey, opts));
     }
     return this.clients.get(key)!;
   }
@@ -42,10 +42,13 @@ export class SupabaseService {
 
     const key = `${url}:${accessToken.slice(0, 8)}`;
     if (!this.clients.has(key)) {
-      this.clients.set(key, createClient(url, clientKey, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const opts: any = {
         global: { headers: { Authorization: `Bearer ${accessToken}` } },
-        auth: { persistSession: false, autoRefreshToken: false }
-      }));
+        auth: { persistSession: false, autoRefreshToken: false },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.clients.set(key, createClient(url, clientKey, opts));
     }
     return this.clients.get(key)!;
   }
