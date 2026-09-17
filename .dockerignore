@@ -1,7 +1,4 @@
 node_modules
-dist
-!dist/main.js
-apps/dist
 tmp
 .git
 .worktrees
