@@ -2,7 +2,7 @@
 # Cache-bust: change this value to force rebuild
 ARG CACHE_BUST=2
 
-FROM node:22-alpine3.193.19 AS build
+FROM node:22-alpine3.19 AS build
 WORKDIR /build/apps/api
 COPY apps/api/package.json ./
 COPY apps/api/nest-cli.json ./
