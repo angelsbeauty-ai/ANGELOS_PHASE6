@@ -1,6 +1,6 @@
 # AngelOS API — Railway Dockerfile (root-level)
 # Cache-bust: change this value to force rebuild
-ARG CACHE_BUST=1
+ARG CACHE_BUST=2
 
 FROM node:22-alpine AS build
 WORKDIR /build/apps/api
