@@ -104,3 +104,18 @@ export async function approveAiAction(workspaceId: string, actionId: string) {
 export async function cancelAiAction(workspaceId: string, actionId: string) {
   return apiFetch(`/workspaces/${workspaceId}/ai/actions/${actionId}/cancel`, { method: 'POST' });
 }
+
+export interface AiCredits {
+  planCode: string;
+  periodStart: string;
+  allowance: number;
+  used: number;
+  remaining: number | 'unlimited';
+  unlimited: boolean;
+  openaiEnabled: boolean;
+  note: string;
+}
+
+export async function getAiCredits(workspaceId: string) {
+  return apiFetch<AiCredits>(`/workspaces/${workspaceId}/ai/credits`);
+}

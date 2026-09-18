@@ -1,7 +1,5 @@
 import { supabase } from './supabase';
-import { runtimeConfig } from './runtime-config';
-
-const apiUrl = runtimeConfig.apiUrl.replace(/\/$/, '');
+import { getApiBaseUrl } from './api-access';
 
 export class ApiError extends Error {
   constructor(public status: number, public payload: unknown, message: string) {
@@ -13,6 +11,7 @@ export class ApiError extends Error {
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
+  const apiUrl = await getApiBaseUrl();
 
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
@@ -31,7 +30,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const message = typeof payload === 'object' && payload && 'message' in payload
-      ? String((payload as any).message)
+      ? String((payload as { message: unknown }).message)
       : raw || `Request failed with status ${response.status}`;
     throw new ApiError(response.status, payload, message);
   }

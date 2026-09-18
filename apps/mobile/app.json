@@ -17,20 +17,25 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.angelsbeauty.angelos"
+      "bundleIdentifier": "com.angelsbeauty.angelos",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "AngelOS uses the microphone so you can talk to your assistant.",
+        "NSSpeechRecognitionUsageDescription": "AngelOS uses speech recognition so you can talk to your assistant."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "com.angelsbeauty.angelos"
+      "package": "com.angelsbeauty.angelos",
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", "expo-av"],
     "experiments": {
       "typedRoutes": true
     },
