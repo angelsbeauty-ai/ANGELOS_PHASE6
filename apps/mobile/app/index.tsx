@@ -12,7 +12,8 @@ const v1 = [
   { name: 'Talk', route: '/hermes-voice' },
   { name: 'Approvals', route: '/approvals' },
   { name: 'Automations', route: '/automations' },
-  { name: 'API Access', route: '/api-access' }
+  { name: 'API Access', route: '/api-access' },
+  { name: 'Credits', route: '/credits' }
 ];
 
 const more = [
@@ -72,7 +73,7 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Talk needs a native iPhone build, not Expo Go. Set the live server in API Access.
+          Talk needs a native iPhone build, not Expo Go. Set the live server in API Access. Credits shows OpenAI left this month.
         </Text>
       </View>
     </ScrollView>
