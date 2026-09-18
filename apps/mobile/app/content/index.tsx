@@ -20,18 +20,19 @@ export default function ContentScreen() {
 
   return <Screen>
     <View style={styles.header}>
-      <View style={styles.headerCopy}><Pill tone="gold">Marketing Studio</Pill><ScreenTitle>Content</ScreenTitle><SupportText>Turn your best business media into one clear next post.</SupportText></View>
+      <View style={styles.headerCopy}><Pill tone="gold">Marketing Studio</Pill><ScreenTitle>Content</ScreenTitle><SupportText>Draft, approve, schedule. Publish only after a connected account and your OK.</SupportText></View>
       <Link href="/content/new" asChild><Pressable style={styles.createButton}><PrimaryActionLabel>Create</PrimaryActionLabel></Pressable></Link>
     </View>
     <Card premium>
-      <SectionTitle>Focused recommendations</SectionTitle>
-      <BodyText>AngelOS chooses the strongest direction for your goal, then prepares each platform version for your approval.</BodyText>
-      <SupportText>Live publishing stays locked until a real provider account and capability check are connected.</SupportText>
+      <SectionTitle>Schedule a month (C + D)</SectionTitle>
+      <BodyText>Pick a time on a draft, approve, then it waits to publish. Academy trainees get 1 month of scheduling free.</BodyText>
+      <SupportText>Live posting needs Instagram or LINE connected first.</SupportText>
+      <Link href="/connections" asChild><Pressable style={{ marginTop: 8 }}><SecondaryActionLabel>Connect accounts</SecondaryActionLabel></Pressable></Link>
     </Card>
     <View style={styles.sectionHeader}><SectionTitle>Your content</SectionTitle><Pressable onPress={() => void load()} style={styles.refreshButton}><SecondaryActionLabel>Refresh</SecondaryActionLabel></Pressable></View>
     {busy ? <Card><BodyText>Loading content...</BodyText></Card> : null}
     {!busy && posts.length === 0 ? <Card><SectionTitle>No drafts yet</SectionTitle><SupportText>Start with a business goal and AngelOS will review your eligible media.</SupportText></Card> : null}
-    {posts.map((post) => <Link key={post.id} href={`/content/${post.id}` as any} asChild><Pressable><Card>
+    {posts.map((post) => <Link key={post.id} href={`/content/${post.id}` as never} asChild><Pressable><Card>
       <View style={styles.postHeader}><Pill tone={post.status === 'published' ? 'success' : post.status === 'failed' ? 'critical' : 'secondary'}>{post.status.replaceAll('_', ' ')}</Pill><SupportText>{post.primary_format}</SupportText></View>
       <Text style={styles.postTitle}>{post.title}</Text><SupportText>{post.objective.replaceAll('_', ' ')}</SupportText>
       <BodyText>{post.strategy_reason ?? 'Strategy note will appear after the media review.'}</BodyText>
