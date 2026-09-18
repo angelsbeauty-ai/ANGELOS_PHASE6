@@ -3,6 +3,7 @@ import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { AiService } from './ai.service';
+import { CreditsService } from './credits.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { CreateMemoryDto } from './dto/create-memory.dto';
 import { SendAiMessageDto } from './dto/send-ai-message.dto';
@@ -13,7 +14,15 @@ import { UpdateAssistantRolesDto } from './dto/update-assistant-roles.dto';
 @Controller('workspaces/:workspaceId/ai')
 @UseGuards(SupabaseAuthGuard)
 export class AiController {
-  constructor(private readonly ai: AiService) {}
+  constructor(
+    private readonly ai: AiService,
+    private readonly credits: CreditsService
+  ) {}
+
+  @Get('credits')
+  getCredits(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) {
+    return this.credits.getSnapshot(user, workspaceId);
+  }
 
   @Get('profile')
   getProfile(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string) {
@@ -57,12 +66,13 @@ export class AiController {
   }
 
   @Post('conversations/:conversationId/messages')
-  sendMessage(
+  async sendMessage(
     @CurrentUser() user: AuthUser,
     @Param('workspaceId') workspaceId: string,
     @Param('conversationId') conversationId: string,
     @Body() dto: SendAiMessageDto
   ) {
+    await this.credits.consume(user, workspaceId, 'openai_chat');
     return this.ai.sendMessage(user, workspaceId, conversationId, dto);
   }
 
@@ -99,11 +109,12 @@ export class AiController {
   }
 
   @Post('voice')
-  sendVoice(
+  async sendVoice(
     @CurrentUser() user: AuthUser,
     @Param('workspaceId') workspaceId: string,
     @Body() dto: SendVoiceMessageDto
   ) {
+    await this.credits.consume(user, workspaceId, 'openai_voice');
     return this.ai.sendVoice(user, workspaceId, dto);
   }
 }
