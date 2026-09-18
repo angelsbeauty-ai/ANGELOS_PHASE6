@@ -7,29 +7,29 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const features = [
-    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice' },
-    { name: 'AI Settings', icon: '🧠', route: '/ai-settings' },
-    { name: 'Approvals', icon: '✅', route: '/approvals' },
-    { name: 'History', icon: '📋', route: '/hermes-history' },
-    { name: 'Settings', icon: '⚙️', route: '/hermes-settings' },
+    { name: 'Clients', route: '/clients' },
+    { name: 'Calendar', route: '/calendar' },
+    { name: 'Messages', route: '/messages' },
+    { name: 'Content', route: '/content' },
+    { name: 'Assistant', route: '/ai' },
+    { name: 'Approvals', route: '/approvals' },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>AngelOs</Text>
-        <Text style={styles.subtitle}>AI Operating System</Text>
+        <Text style={styles.title}>AngelOS</Text>
+        <Text style={styles.subtitle}>Business OS · V1</Text>
       </View>
 
       <View style={styles.grid}>
-        {features.map((feature, i) => (
+        {features.map((feature) => (
           <TouchableOpacity
-            key={i}
+            key={feature.route}
             style={styles.card}
-            onPress={() => router.push(feature.route as any)}
+            onPress={() => router.push(feature.route as never)}
           >
             <LinearGradient colors={['#0ea5e920', '#0ea5e910']} style={styles.cardGradient}>
-              <Text style={styles.cardIcon}>{feature.icon}</Text>
               <Text style={styles.cardName}>{feature.name}</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -37,7 +37,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Built for Angels Beauty Academy</Text>
+        <Text style={styles.footerText}>For any business owner. Hermes is not in this app.</Text>
       </View>
     </ScrollView>
   );
@@ -51,7 +51,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 16 },
   card: { width: '48%', aspectRatio: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#334155' },
   cardGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  cardIcon: { fontSize: 42, marginBottom: 12 },
   cardName: { fontSize: 15, fontWeight: '600', color: '#f1f5f9', textAlign: 'center' },
   footer: { padding: 24, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1e293b', marginTop: 16 },
   footerText: { fontSize: 12, color: '#64748b', textAlign: 'center' },
