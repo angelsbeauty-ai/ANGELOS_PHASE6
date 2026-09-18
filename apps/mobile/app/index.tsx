@@ -8,6 +8,7 @@ const v1 = [
   { name: 'Calendar', route: '/calendar' },
   { name: 'Messages', route: '/messages' },
   { name: 'Content', route: '/content' },
+  { name: 'Connections', route: '/connections' },
   { name: 'Assistant', route: '/ai' },
   { name: 'Talk', route: '/hermes-voice' },
   { name: 'Approvals', route: '/approvals' },
@@ -73,7 +74,7 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Talk needs a native iPhone build, not Expo Go. Set the live server in API Access. Credits shows OpenAI left this month.
+          Connect Instagram and LINE here. Schedule in Content. Talk needs a native iPhone build.
         </Text>
       </View>
     </ScrollView>
