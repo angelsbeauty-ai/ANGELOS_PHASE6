@@ -7,6 +7,8 @@ import { getFounderMe } from '../src/lib/founder';
 import { supabase } from '../src/lib/supabase';
 
 const areas = [
+  { href: '/connections', title: 'Connect accounts', detail: 'Instagram and LINE — your pages, your login' },
+  { href: '/credits', title: 'AI Credits', detail: 'OpenAI meter this month' },
   { href: '/api-access', title: 'API Access', detail: 'Live server URL and health ping' },
   { href: '/ai-settings', title: 'AI Assistant', detail: 'Personality, roles, proactivity and guidance' },
   { href: '/marketing-profile', title: 'Marketing Profile', detail: 'Goals, ideal client, experience and service area' },
