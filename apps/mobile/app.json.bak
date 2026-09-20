@@ -8,12 +8,11 @@
     "userInterfaceStyle": "dark",
     "plugins": [
       "expo-router",
-      "expo-secure-store",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Angelos to access photos and videos.",
-          "cameraPermission": "Allow Angelos to use the camera.",
+          "photosPermission": "Allow AngelOS to access photos and videos only when you choose business media to import.",
+          "cameraPermission": "Allow AngelOS to use the camera only when you choose to capture business media.",
           "microphonePermission": false
         }
       ]
@@ -23,10 +22,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.angelos.app",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "com.angelos.app"
     },
     "android": {
       "package": "com.angelos.app"
