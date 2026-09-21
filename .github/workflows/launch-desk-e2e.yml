@@ -1,0 +1,38 @@
+name: Launch Desk E2E
+
+on:
+  push:
+    paths:
+      - "apps/launch-desk/**"
+  workflow_dispatch:
+
+jobs:
+  launch-desk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/launch-desk
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: gpt-5.6-luna
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm test
+      - run: npm run build
+      - name: Start API
+        run: npm run dev:server > /tmp/launch-desk-api.log 2>&1 &
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:3180/api/health && exit 0
+            sleep 2
+          done
+          cat /tmp/launch-desk-api.log
+          exit 1
+      - name: Real streamed OpenAI agent verification
+        run: npm run verify:stream
