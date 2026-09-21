@@ -6,7 +6,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development",
       "environment": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
