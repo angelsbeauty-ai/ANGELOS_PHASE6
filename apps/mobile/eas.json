@@ -6,14 +6,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "environment": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
         "EXPO_PUBLIC_API_URL": "https://angelosapi-staging.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://hhzegavoyuicclsmrkwf.supabase.co"
-      },
-      "ios": {
-        "simulator": false
       }
     },
     "preview": {
