@@ -1,16 +1,11 @@
-{
+﻿{
   "cli": {
     "version": ">= 5.0.0"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://angelosapi-staging.up.railway.app",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://hhzegavoyuicclsmrkwf.supabase.co"
-      }
+      "distribution": "internal"
     },
     "preview": {
       "android": {
@@ -23,6 +18,15 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      },
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id"
+      }
+    }
   }
 }

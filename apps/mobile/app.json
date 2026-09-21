@@ -19,10 +19,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.angelsbeauty.angelos",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "com.angelsbeauty.angelos"
     },
     "android": {
       "adaptiveIcon": {
