@@ -14,7 +14,9 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.angelsbeauty.angelos"
@@ -30,10 +32,18 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "angelos"
+    "scheme": "angelos",
+    "extra": {
+      "eas": {
+        "projectId": "adf82555-9894-4426-87e7-5d84b662f4ac"
+      }
+    },
+    "owner": "angelsbeauty"
   }
 }
