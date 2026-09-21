@@ -1,0 +1,6 @@
+{
+  "name":"@angelos/launch-desk","private":true,"version":"0.1.0","type":"module",
+  "scripts":{"dev":"concurrently -k \"npm:dev:server\" \"npm:dev:client\"","dev:server":"tsx server/index.ts","dev:client":"vite --host 0.0.0.0","build":"tsc -p tsconfig.json && vite build","test":"vitest run","verify:stream":"tsx scripts/verify-stream.ts"},
+  "dependencies":{"@openai/agents":"^0.18.0","cors":"^2.8.5","dotenv":"^17.2.2","express":"^5.1.0","react":"^19.1.1","react-dom":"^19.1.1","zod":"^4.1.5"},
+  "devDependencies":{"@types/cors":"^2.8.19","@types/express":"^5.0.3","@types/node":"^22.18.6","@types/react":"^19.1.13","@types/react-dom":"^19.1.9","@vitejs/plugin-react":"^5.0.4","concurrently":"^9.2.1","tsx":"^4.20.5","typescript":"^5.9.2","vite":"^7.1.7","vitest":"^3.2.4"}
+}
