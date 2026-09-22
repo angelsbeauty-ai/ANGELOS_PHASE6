@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "adf82555-9894-4426-87e7-5d84b662f4ac"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.angelsbeauty.angelos",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

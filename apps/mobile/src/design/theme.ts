@@ -1,29 +1,31 @@
 export const colors = {
   light: {
-    background: '#FCFBF8',
-    elevated: '#FFFFFF',
-    warmSurface: '#F6F2EB',
-    primaryText: '#191919',
-    secondaryText: '#6F6A63',
-    border: '#EAE5DD',
-    gold: '#B9975B',
-    softGold: '#E9DDC7',
-    success: '#557662',
-    warning: '#A87942',
-    critical: '#A45E59'
+    background: '#09090b',
+    elevated: 'rgba(255,255,255,0.08)',
+    warmSurface: 'rgba(255,255,255,0.12)',
+    primaryText: '#fafafa',
+    secondaryText: '#a1a1aa',
+    inverseText: '#09090b',
+    border: 'rgba(255,255,255,0.16)',
+    gold: '#ffffff',
+    softGold: 'rgba(255,255,255,0.14)',
+    success: '#d4d4d8',
+    warning: '#e4e4e7',
+    critical: '#f4f4f5'
   },
   dark: {
-    background: '#151515',
-    elevated: '#1D1D1D',
-    warmSurface: '#24211D',
-    primaryText: '#F7F4EF',
-    secondaryText: '#A9A39A',
-    border: '#34312D',
-    gold: '#D0AF70',
-    softGold: '#3A3022',
-    success: '#7FA58B',
-    warning: '#D3A267',
-    critical: '#D58A84'
+    background: '#050505',
+    elevated: 'rgba(255,255,255,0.08)',
+    warmSurface: 'rgba(255,255,255,0.12)',
+    primaryText: '#fafafa',
+    secondaryText: '#a1a1aa',
+    inverseText: '#09090b',
+    border: 'rgba(255,255,255,0.14)',
+    gold: '#ffffff',
+    softGold: 'rgba(255,255,255,0.14)',
+    success: '#d4d4d8',
+    warning: '#e4e4e7',
+    critical: '#f4f4f5'
   }
 };
 
@@ -50,10 +52,10 @@ export const typography = {
 
 export const shadow = {
   soft: {
-    shadowColor: '#191919',
-    shadowOpacity: 0.05,
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 2
+    elevation: 4
   }
 };

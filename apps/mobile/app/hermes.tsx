@@ -4,6 +4,7 @@ import { Screen } from '../src/components/Screen';
 import { BodyText, Card, Pill, PrimaryActionLabel, ScreenTitle, SectionTitle, SupportText, ui } from '../src/components/ui';
 import { getHermesOverview, decideApproval, type HermesOverview, type ApprovalItem, type ApprovalDecision } from '../src/lib/hermes';
 import { getActiveWorkspace } from '../src/lib/workspace';
+import { Link } from 'expo-router';
 
 export default function HermesScreen() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -161,6 +162,9 @@ export default function HermesScreen() {
             <Pressable disabled={busy} onPress={() => void load()}>
               <PrimaryActionLabel>{busy ? 'Refreshing...' : 'Refresh'}</PrimaryActionLabel>
             </Pressable>
+            <Link href="/hermes-voice" style={styles.voiceLink}>
+              <Text style={styles.voiceButton}>🎤 Talk to Hermes</Text>
+            </Link>
           </Card>
 
           <Card>
@@ -239,5 +243,15 @@ const styles = StyleSheet.create({
   approve: { backgroundColor: ui.colors.softGold },
   reject: { backgroundColor: ui.colors.critical },
   buttonText: { color: ui.colors.primaryText, fontWeight: '700', fontSize: 15 },
-  cancelLink: { color: ui.colors.gold, fontWeight: '600', paddingVertical: ui.spacing.xs, textAlign: 'center' }
+  cancelLink: { color: ui.colors.gold, fontWeight: '600', paddingVertical: ui.spacing.xs, textAlign: 'center' },
+  voiceLink: { marginTop: ui.spacing.sm, alignItems: 'center' },
+  voiceButton: {
+    color: ui.colors.gold,
+    fontSize: 15,
+    fontWeight: '700',
+    paddingVertical: ui.spacing.xs,
+    paddingHorizontal: ui.spacing.sm,
+    backgroundColor: ui.colors.softGold,
+    borderRadius: ui.radius.control,
+  },
 });

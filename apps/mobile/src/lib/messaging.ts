@@ -210,3 +210,100 @@ export function translateClientMessage(workspaceId: string, messageId: string, t
     method: 'POST', body: JSON.stringify({ targetLanguage })
   });
 }
+
+export interface MetaConnectionStatus {
+  appCredentials: { configured: boolean };
+  webhookVerifyToken: { configured: boolean };
+  transport: { enabled: boolean; pinnedWorkspace: string | null };
+  connections: Array<{
+    provider: string;
+    status: string;
+    tokenPresent: boolean;
+    expiresAt: string | null;
+    expired: boolean;
+  }>;
+  channels: Array<{
+    provider: string;
+    status: string;
+    externalAccountIdPresent: boolean;
+  }>;
+}
+
+export interface ConnectMetaChannelInput {
+  provider: 'instagram' | 'facebook';
+  displayName: string;
+  externalAccountId: string;
+  accessToken: string;
+  accessExpiresAt: string;
+  scopes?: string;
+}
+
+export function getMetaConnectionStatus(workspaceId: string) {
+  return apiFetch<MetaConnectionStatus>('/workspaces/' + workspaceId + '/messaging/meta/status');
+}
+
+export function connectMetaChannel(workspaceId: string, input: ConnectMetaChannelInput) {
+  return apiFetch<{
+    channel: { id: string; provider: string; display_name: string; external_account_id: string; status: string };
+    credential: { provider: string; status: string; expiresAt: string; tokenStored: boolean };
+    sendingEnabled: boolean;
+  }>('/workspaces/' + workspaceId + '/messaging/channels/meta', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export function disconnectMetaChannel(workspaceId: string, provider: 'instagram' | 'facebook') {
+  return apiFetch<{ provider: string; channelsDisconnected: number; credentialsRevoked: number }>(
+    '/workspaces/' + workspaceId + '/messaging/channels/meta/' + provider + '/disconnect',
+    { method: 'POST' }
+  );
+}
+
+export interface LineConnectionStatus {
+  channelCredentials: { configured: boolean };
+  transport: { enabled: boolean; pinnedWorkspace: string | null };
+  connection: {
+    provider: string;
+    status: string;
+    tokenPresent: boolean;
+    expiresAt: string | null;
+    expired: boolean;
+  } | null;
+  channel: {
+    provider: string;
+    status: string;
+    externalAccountIdPresent: boolean;
+  } | null;
+}
+
+export interface ConnectLineChannelInput {
+  provider: 'line';
+  displayName: string;
+  externalAccountId: string;
+  accessToken: string;
+  accessExpiresAt: string;
+  scopes?: string;
+}
+
+export function getLineConnectionStatus(workspaceId: string) {
+  return apiFetch<LineConnectionStatus>('/workspaces/' + workspaceId + '/messaging/line/status');
+}
+
+export function connectLineChannel(workspaceId: string, input: ConnectLineChannelInput) {
+  return apiFetch<{
+    channel: { id: string; provider: string; display_name: string; external_account_id: string; status: string };
+    credential: { provider: string; status: string; expiresAt: string; tokenStored: boolean };
+    sendingEnabled: boolean;
+  }>('/workspaces/' + workspaceId + '/messaging/channels/line', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+export function disconnectLineChannel(workspaceId: string) {
+  return apiFetch<{ provider: string; channelsDisconnected: number; credentialsRevoked: number }>(
+    '/workspaces/' + workspaceId + '/messaging/channels/line/disconnect',
+    { method: 'POST' }
+  );
+}

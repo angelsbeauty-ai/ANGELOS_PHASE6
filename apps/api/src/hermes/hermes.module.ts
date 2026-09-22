@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CodexIntegrationController } from './codex-integration.controller';
 import { HermesControlController } from './hermes-control.controller';
 import { N8nCallbackController } from './n8n-callback.controller';
 import { N8nHermesController } from './n8n-hermes.controller';
@@ -10,7 +11,7 @@ import { HermesBuilderResultRecorder } from './hermes-builder-result-recorder.se
 import { HermesSystemService } from './hermes-system.service';
 
 @Module({
-  controllers: [HermesControlController, N8nCallbackController, N8nHermesController],
+  controllers: [CodexIntegrationController, HermesControlController, N8nCallbackController, N8nHermesController],
   providers: [
     HermesTaskService,
     HermesControlService,

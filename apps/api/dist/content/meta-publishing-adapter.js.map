@@ -1,0 +1,1 @@
+{"version":3,"file":"meta-publishing-adapter.js","sourceRoot":"","sources":["../../src/content/meta-publishing-adapter.ts"],"names":[],"mappings":";;;AAqBA,MAAa,qBAAqB;IACH;IAA7B,YAA6B,MAAmC;QAAnC,WAAM,GAAN,MAAM,CAA6B;IAAG,CAAC;IAEpE,KAAK,CAAC,OAAO,CAAC,KAA0B;QAWtC,OAAO;YACL,MAAM,EAAE,QAAQ;YAChB,KAAK,EAAE,mEAAmE;SAC3E,CAAC;IACJ,CAAC;CACF;AAnBD,sDAmBC"}

@@ -1,48 +1,26 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import { UsageTracker } from '../src/components/UsageTracker';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-export {
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = { initialRouteName: '(tabs)' };
-
-SplashScreen.preventAutoHideAsync();
+import { StatusBar } from 'expo-status-bar';
+import { colors } from '../src/design/theme';
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
-
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  return (
-    <ThemeProvider value={DarkTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ai-settings" options={{ title: 'AI Settings', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
-        <Stack.Screen name="approvals" options={{ title: 'Approvals', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
-        <Stack.Screen name="hermes-voice" options={{ title: 'Hermes Voice', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
-        <Stack.Screen name="system-check" options={{ title: 'System Check', headerStyle: { backgroundColor: '#0f172a' }, headerTintColor: '#f1f5f9' }} />
-      </Stack>
-    </ThemeProvider>
-  );
+  return <>
+    <StatusBar style="light" />
+    <UsageTracker />
+    <Stack screenOptions={{
+      headerTitleAlign: 'center',
+      headerStyle: { backgroundColor: colors.light.background },
+      headerTintColor: colors.light.primaryText,
+      headerTitleStyle: { fontWeight: '700' },
+      headerShadowVisible: false,
+      contentStyle: { backgroundColor: colors.light.background }
+    }}>
+      <Stack.Screen name="index" options={{ title: 'AngelOS' }} />
+      <Stack.Screen name="login" options={{ title: 'Sign In' }} />
+      <Stack.Screen name="connections" options={{ title: 'Connections' }} />
+      <Stack.Screen name="approvals" options={{ title: 'Approvals' }} />
+      <Stack.Screen name="founder-admin" options={{ title: 'Founder' }} />
+      <Stack.Screen name="voice" options={{ title: 'Voice Mode' }} />
+    </Stack>
+  </>;
 }

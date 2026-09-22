@@ -39,7 +39,7 @@ from (
   from public.workspaces ws
   cross join lateral (
     values
-      ('Treatment recorded — aftercare',        'aftercare',  'treatment_recorded', 'create_followup', 0,   'aftercare',  '{"reason":"Client just had a treatment recorded. Create a follow-up for owner review; no automatic outbound message.'}'),
+      ('Treatment recorded — aftercare',        'aftercare',  'treatment_recorded', 'create_followup', 0,   'aftercare',  '{"reason":"Client just had a treatment recorded. Create a follow-up for owner review; no automatic outbound message."}'),
       ('Treatment recorded — follow-up flag',  'followup',  'treatment_recorded', 'create_followup', 0,   'follow_up',  '{"reason":"Treatment recorded. Flag for owner follow-up if the client has open needs. No automatic outbound message."}')
   ) as r(name, category, trigger_type, action_type, delay_minutes, routine_category, action_config)
 ) r
@@ -49,8 +49,6 @@ where not exists (
   where ar.workspace_id = ws.id
     and ar.trigger_type = r.trigger_type
     and ar.name = r.name
-)
-on conflict on constraint automation_rules_workspace_trigger_idx
-  do nothing;
+);
 
 commit;

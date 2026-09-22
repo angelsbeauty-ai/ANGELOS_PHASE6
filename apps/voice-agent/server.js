@@ -1,158 +1,215 @@
-const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
-const cors = require('cors');
+// Hermes voice agent HTTP server — text-based voice responses (saves TTS credits).
+// POST /join { "roomName": "...", "userId?: string" }
+// Env: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY, PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Optional: SEND_TTS_AUDIO=true (fallback to OpenAI TTS audio instead of text data)
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+import { createServer } from 'http';
+import { AccessToken } from 'livekit-server-sdk';
+import OpenAI from 'openai';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { createWriteStream, createReadStream, unlinkSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
-// Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://hhzegavoyuicclsmrkwf.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const url = process.env.LIVEKIT_URL;
+const apiKey = process.env.LIVEKIT_API_KEY;
+const apiSecret = process.env.LIVEKIT_API_SECRET;
+const openAiKey = process.env.OPENAI_API_KEY;
+const port = Number(process.env.PORT || 8787);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+if (!url || !apiKey || !apiSecret || !openAiKey) {
+  console.error('Missing env vars: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, OPENAI_API_KEY');
+  process.exit(1);
+}
 
-// Process voice message with database context
-app.post('/api/process-voice', async (req, res) => {
+const openai = new OpenAI({ apiKey: openAiKey });
+const HERMES_SYSTEM = `You are Hermes, the AngelOS AI voice assistant. Speak in short, natural sentences (1-3 sentences). Be calm, helpful, and concise. You are talking to a user over voice in real time.`;
+
+console.log('Hermes voice agent HTTP server starting on port', port);
+
+// Dynamic import for livekit-client (ESM)
+const { Room, createAudioTrack } = await import('livekit-client');
+
+// Supabase client for conversation memory
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+if (!supabase) {
+  console.warn('No Supabase DB configured; conversation memory disabled.');
+}
+
+async function loadHistory(userId) {
+  if (!supabase || !userId) return [];
   try {
-    const { message, userId } = req.body;
-    
-    // Get database context
-    const [appointments, clients, services] = await Promise.all([
-      supabase.from('appointments').select('service_name, start_at, status').limit(5),
-      supabase.from('clients').select('display_name, email, phone, status').limit(5),
-      supabase.from('services').select('name, duration_minutes, standard_price').limit(10)
+    const { data, error } = await supabase
+      .from('hermes_conversations')
+      .select('role, content')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(20);
+    if (error) throw error;
+    return (data || []).map((r) => ({ role: r.role, content: r.content }));
+  } catch (e) {
+    console.error('Load history error:', e);
+    return [];
+  }
+}
+
+async function saveTurn(userId, userText, assistantText) {
+  if (!supabase || !userId) return;
+  try {
+    await supabase.from('hermes_conversations').insert([
+      { user_id: userId, role: 'user', content: userText },
+      { user_id: userId, role: 'assistant', content: assistantText },
     ]);
+  } catch (e) {
+    console.error('Save turn error:', e);
+  }
+}
 
-    // Build context for AI
-    const dbContext = `
-Current Appointments:
-${appointments.data?.map(a => `- ${a.service_name} at ${a.start_at} (${a.status})`).join('\n') || 'None'}
+async function speakAndPublish(room, text) {
+  console.log('Hermes:', text);
 
-Recent Clients:
-${clients.data?.map(c => `- ${c.display_name} (${c.status})`).join('\n') || 'None'}
+  // Send text to the room via data channel — phone plays it with on-device TTS (free).
+  // This saves OpenAI TTS credits on every turn vs sending PCM audio.
+  try {
+    const payload = JSON.stringify({ type: 'agent-text', text });
+    await room.localParticipant.publishData(new TextEncoder().encode(payload), { topic: 'chat' });
+    console.log('Sent agent text to room:', text);
+  } catch (e) {
+    console.error('Failed to publish agent text:', e);
+  }
 
-Available Services:
-${services.data?.map(s => `- ${s.name} (${s.duration_minutes} min, ¥${s.standard_price})`).join('\n') || 'None'}
-`;
+  // Fallback: also send TTS audio if phone doesn't handle on-device TTS.
+  // Disabled by default to save credits — enable by setting SEND_TTS_AUDIO=true.
+  if (process.env.SEND_TTS_AUDIO === 'true') {
+    try {
+      const tts = await openai.audio.speech.create({
+        model: 'tts-1',
+        voice: 'alloy',
+        input: text,
+        response_format: 'pcm',
+      });
 
-    // Call OpenAI with database context
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { 
-            role: 'system', 
-            content: `You are Hermes, an AI assistant for Angels Beauty Academy in Okinawa, Japan. 
-You have access to the business database. Respond in Japanese.
+      const file = join(tmpdir(), `hermes-${Date.now()}.pcm`);
+      const writer = createWriteStream(file);
 
-${dbContext}
+      for await (const chunk of tts.body) {
+        writer.write(chunk);
+      }
+      writer.end();
+      await new Promise((res) => writer.on('finish', res));
 
-When users ask about appointments, clients, or services, use this data to answer accurately.`
-          },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.7
-      })
+      const audioStream = createReadStream(file, { highWaterMark: 16384 });
+      const audioTrack = createAudioTrack(
+        'hermes-audio',
+        audioStream,
+        { source: 'microphone', sampleRate: 24000, channelCount: 1 }
+      );
+
+      await room.localParticipant.publishTrack(audioTrack, { name: 'hermes-speech' });
+      console.log('Published audio track for:', text);
+
+      audioStream.on('end', () => {
+        console.log('Finished playing audio for:', text);
+        unlinkSync(file);
+      });
+    } catch (e) {
+      console.error('TTS audio publish failed:', e);
+    }
+  }
+}
+
+async function runAgentInRoom(roomName, userId) {
+  console.log('Starting agent in room:', roomName, userId ? `(user: ${userId})` : '');
+
+  const grant = { roomJoin: true, room: roomName, canPublish: true, canSubscribe: true, canPublishData: true };
+  const token = new AccessToken(apiKey, apiSecret, { identity: 'hermes-agent', name: 'Hermes', ttl: 60 * 5 });
+  token.addGrant(grant);
+  const jwt = token.toJwt();
+
+  const room = new Room({ adaptiveStream: false, dynacast: false });
+  await room.connect(url, jwt, { autoSubscribe: true });
+  console.log('Agent joined room:', roomName);
+
+  // Load conversation history from Supabase
+  const history = await loadHistory(userId);
+  const conversationHistory = [{ role: 'system', content: HERMES_SYSTEM }, ...history];
+
+  // Initial greeting
+  const greeting = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      ...conversationHistory,
+      { role: 'user', content: userId ? 'Say a short friendly hello and mention you remember this user.' : 'Say a short friendly hello as Hermes, 1 sentence.' },
+    ],
+    temperature: 0.3,
+    max_tokens: 60,
+  });
+  const greetingText = greeting.choices[0]?.message?.content?.trim() || 'Hello, I am Hermes.';
+  await speakAndPublish(room, greetingText);
+  if (userId) await saveTurn(userId, '[session-start]', greetingText);
+
+  // Listen for user-speech data messages
+  room.on('dataReceived', async (data, participant) => {
+    try {
+      const msg = JSON.parse(new TextDecoder().decode(data));
+      if (msg.type !== 'user-speech' || !msg.text) return;
+
+      const userText = msg.text;
+      console.log('User (via data):', userText);
+      conversationHistory.push({ role: 'user', content: userText });
+
+      const reply = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: conversationHistory,
+        temperature: 0.3,
+        max_tokens: 100,
+      });
+      const replyText = reply.choices[0]?.message?.content?.trim() || '...';
+      conversationHistory.push({ role: 'assistant', content: replyText });
+
+      if (userId) await saveTurn(userId, userText, replyText);
+      await speakAndPublish(room, replyText);
+    } catch (e) {
+      console.error('Data message error:', e);
+    }
+  });
+
+  // Keep agent alive for a few minutes, then leave
+  setTimeout(async () => {
+    console.log('Agent leaving room:', roomName);
+    await room.disconnect();
+  }, 3 * 60 * 1000);
+}
+
+createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/join') {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      try {
+        const { roomName, userId } = JSON.parse(body);
+        if (!roomName) throw new Error('Missing roomName');
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ status: 'ok', room: roomName }));
+        await runAgentInRoom(roomName, userId).catch((e) => console.error('Agent error:', e));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: e?.message || String(e) }));
+      }
     });
-
-    const openaiData = await openaiResponse.json();
-    const reply = openaiData.choices[0].message.content;
-
-    res.json({ reply, status: 'success', context: dbContext });
-  } catch (error) {
-    console.error('Voice processing error:', error);
-    res.status(500).json({ error: error.message });
+    return;
   }
-});
 
-// Create appointment
-app.post('/api/create-appointment', async (req, res) => {
-  try {
-    const { clientId, serviceId, service_name, start_at, duration_minutes, status = 'confirmation_pending' } = req.body;
+  res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ error: 'Not found' }));
+}).listen(port);
 
-    const { data, error } = await supabase
-      .from('appointments')
-      .insert({
-        client_id: clientId,
-        service_id: serviceId,
-        service_name,
-        duration_minutes,
-        start_at,
-        status,
-        currency: 'JPY'
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({ success: true, appointment: data });
-  } catch (error) {
-    console.error('Create appointment error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get client by name
-app.get('/api/clients/search', async (req, res) => {
-  try {
-    const { name } = req.query;
-    
-    const { data, error } = await supabase
-      .from('clients')
-      .select('id, display_name, email, phone, status')
-      .ilike('display_name', `%${name}%`)
-      .limit(5);
-
-    if (error) throw error;
-
-    res.json({ clients: data || [] });
-  } catch (error) {
-    console.error('Search clients error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get available time slots
-app.get('/api/slots', async (req, res) => {
-  try {
-    const { date } = req.query;
-    
-    // Get business hours
-    const { data: hours } = await supabase
-      .from('business_hours')
-      .select('day_of_week, start_time, end_time');
-
-    // Get existing appointments for the day
-    const { data: appointments } = await supabase
-      .from('appointments')
-      .select('start_at, end_at, duration_minutes')
-      .gte('start_at', `${date}T00:00:00Z`)
-      .lt('start_at', `${date}T23:59:59Z`);
-
-    res.json({ 
-      businessHours: hours || [],
-      bookedSlots: appointments || []
-    });
-  } catch (error) {
-    console.error('Get slots error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-const PORT = process.env.PORT || 8787;
-app.listen(PORT, () => {
-  console.log(`🚀 Hermes Voice Agent running on port ${PORT}`);
-  console.log(`Health: http://localhost:${PORT}/health`);
-});
+console.log('Ready. POST /join with { "roomName": "...", "userId?: "..." } to start an agent.');

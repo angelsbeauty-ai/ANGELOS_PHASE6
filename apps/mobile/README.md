@@ -1,66 +1,28 @@
-# 📱 AngelOs Mobile App
+# AngelOs Mobile
 
-## Quick Start
+Expo-based mobile app for AngelOs.
 
-### Test with Expo Go (Limited)
-```bash
-npm install
-npm run start:go
-```
-**Works:** Home, Services, Calendar, Clients, Settings, History  
-**Doesn't work:** Voice recording (needs native modules)
+## Quickstart
 
----
+1. From repo root:
+   ```bash
+   npm install
+   cd apps/mobile
+   npm install
+   npm start
+   ```
+2. Open on device/simulator via Expo Go or development build.
 
-## Build Development Client (Voice Works!)
+## Hermes Voice
 
-### Option 1: EAS Build (Recommended)
+- Onboarding: `/hermes-onboarding`
+- Voice session: `/hermes-voice`
+- Conversation history: `/hermes-history`
 
-```bash
-# Install EAS CLI
-npm install -g eas-cli
+Hermes uses:
+- On-device speech-to-text (Japanese by default)
+- LiveKit real-time voice rooms
+- Supabase-backed conversation memory
+- Node agent with OpenAI TTS for replies
 
-# Login
-eas login
-
-# Build development client with voice support
-eas build --profile development --platform android
-# or for iOS:
-# eas build --profile development --platform ios
-
-# Install APK on your phone
-# Voice recording will work!
-```
-
-### Option 2: Local Dev Client (Faster)
-
-```bash
-# Android (requires Android SDK)
-npx expo run:android
-
-# iOS (requires Xcode/Mac)
-npx expo run:ios
-```
-
----
-
-## Features
-
-✅ Hermes Voice (with dev build)  
-✅ Planner/Calendar  
-✅ Client Management  
-✅ Services Menu  
-✅ Settings  
-✅ Conversation History  
-
----
-
-## Tech Stack
-
-- Expo SDK 52
-- React Native 0.76
-- Supabase Backend
-- LiveKit Voice
-- EAS Build
-
-**Status:** Production Ready (voice needs dev build)
+See `../api/VOICE_DEPLOY.md` for full backend setup.

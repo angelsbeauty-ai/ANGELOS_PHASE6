@@ -1,32 +1,40 @@
-﻿{
+{
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "android": {
-        "buildType": "apk"
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://angelosapi-staging.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hhzegavoyuicclsmrkwf.supabase.co",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       },
-      "distribution": "internal"
+      "environment": "development"
+    },
+    "staging": {
+      "distribution": "internal",
+      "channel": "staging",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging"
+      },
+      "environment": "preview",
+      "autoIncrement": true
     },
     "production": {
-      "distribution": "store"
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "environment": "production"
     }
   },
   "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "internal"
-      },
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id"
-      }
-    }
+    "production": {}
   }
 }

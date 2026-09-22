@@ -14,7 +14,7 @@ import {
   SupportText,
   ui
 } from '../src/components/ui';
-import { cancelAppointment, completeAppointment, confirmAppointment, getCalendar, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
+import { cancelAppointment, completeAppointment, confirmAppointment, getCalendar, listBusinessHours, listServices, type CalendarAppointment, type CalendarBlock } from '../src/lib/bookings';
 import { getActiveWorkspace } from '../src/lib/workspace';
 
 export default function CalendarScreen() {
@@ -23,6 +23,8 @@ export default function CalendarScreen() {
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [busy, setBusy] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [serviceCount, setServiceCount] = useState(0);
+  const [hoursCount, setHoursCount] = useState(0);
 
   useEffect(() => { void load(); }, []);
 
@@ -60,9 +62,15 @@ export default function CalendarScreen() {
       const workspace = await getActiveWorkspace();
       const start = startOfToday();
       const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const data = await getCalendar(workspace.id, start.toISOString(), end.toISOString());
+      const [data, services, hours] = await Promise.all([
+        getCalendar(workspace.id, start.toISOString(), end.toISOString()),
+        listServices(workspace.id),
+        listBusinessHours(workspace.id).catch(() => [])
+      ]);
       setAppointments(data.appointments);
       setBlocks(data.blocks);
+      setServiceCount(services.length);
+      setHoursCount(hours.length);
     } catch (error) { Alert.alert('Could not load calendar', error instanceof Error ? error.message : 'Unknown error'); }
     finally { setBusy(false); }
   }
@@ -109,10 +117,47 @@ export default function CalendarScreen() {
     </Card>
 
     {busy ? <Card><BodyText>Loading calendar...</BodyText></Card> : null}
+    {!busy && serviceCount === 0 ? (
+      <Card premium>
+        <Pill tone="warning">Setup needed</Pill>
+        <SectionTitle>Set up services first</SectionTitle>
+        <SupportText>Calendar bookings need real services (and hours). Add them before taking appointments.</SupportText>
+        <Link href="/services" asChild>
+          <Pressable style={styles.newBookingButton}>
+            <PrimaryActionLabel>Open Services</PrimaryActionLabel>
+          </Pressable>
+        </Link>
+      </Card>
+    ) : null}
+    {!busy && hoursCount < 7 ? (
+      <Card premium>
+        <Pill tone="warning">Hours needed</Pill>
+        <SectionTitle>Set open hours</SectionTitle>
+        <SupportText>Bookings need real business hours from staging. Set Mon-Sat defaults on Services.</SupportText>
+        <Link href="/services" asChild>
+          <Pressable style={styles.newBookingButton}>
+            <PrimaryActionLabel>Open Services</PrimaryActionLabel>
+          </Pressable>
+        </Link>
+      </Card>
+    ) : null}
     {!busy && items.length === 0 ? (
-      <Card>
-        <SectionTitle>No bookings yet</SectionTitle>
-        <SupportText>No appointments or blocks in the next 7 days.</SupportText>
+      <Card premium>
+        <Pill tone="gold">Real calendar</Pill>
+        <SectionTitle>No bookings in the next 7 days</SectionTitle>
+        <SupportText>This list is live from staging — AngelOS will not invent appointments. Add a real client and book a service.</SupportText>
+        <View style={styles.controlRow}>
+          <Link href="/clients/new" asChild>
+            <Pressable style={styles.newBookingButton}>
+              <SecondaryActionLabel>Add client</SecondaryActionLabel>
+            </Pressable>
+          </Link>
+          <Link href="/bookings/new" asChild>
+            <Pressable style={styles.newBookingButton}>
+              <PrimaryActionLabel>New Booking</PrimaryActionLabel>
+            </Pressable>
+          </Link>
+        </View>
       </Card>
     ) : null}
 

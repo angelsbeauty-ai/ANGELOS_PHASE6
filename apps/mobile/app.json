@@ -1,49 +1,39 @@
 {
   "expo": {
-    "name": "AngelOs",
+    "name": "AngelOS",
     "slug": "angelos",
-    "version": "1.0.0",
+    "scheme": "angelos",
+    "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.angelsbeauty.angelos"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
-      },
-      "package": "com.angelsbeauty.angelos"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Angelos to access photos and videos.",
+          "cameraPermission": "Allow Angelos to use the camera.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "angelos",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.angelos.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.angelos.app"
+    },
     "extra": {
       "eas": {
         "projectId": "adf82555-9894-4426-87e7-5d84b662f4ac"
       }
-    },
-    "owner": "angelsbeauty"
+    }
   }
 }

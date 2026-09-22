@@ -1,109 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Screen } from '../src/components/Screen';
+import { BodyText, Card, Pill, ScreenTitle, SectionTitle, SupportText, ui } from '../src/components/ui';
+import { getAssistantProfile, updateAssistantProfile, updateAssistantRoles, type AssistantProfile, type AssistantRole, type AssistantRoleKey } from '../src/lib/ai';
+import { getActiveWorkspace } from '../src/lib/workspace';
 
-export default function AISettingsScreen() {
-  const router = useRouter();
-  const [aiEnabled, setAiEnabled] = useState(true);
-  const [autoSuggestions, setAutoSuggestions] = useState(true);
-  const [voiceMode, setVoiceMode] = useState('hermes');
-
-  const handleSave = () => {
-    alert('Settings saved!');
-  };
-
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <FontAwesome name="arrow-left" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>AI Settings</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>AI Assistant</Text>
-        
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleLabel}>
-            <FontAwesome name="power" size={18} color="#ffffff" style={styles.icon} />
-            <Text style={styles.label}>Enable AI</Text>
-          </View>
-          <Switch value={aiEnabled} onValueChange={setAiEnabled} trackColor={{ false: '#333', true: 'rgba(14,165,233,0.5)' }} thumbColor="#fff" />
-        </View>
-
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleLabel}>
-            <FontAwesome name="bolt" size={18} color="#ffffff" style={styles.icon} />
-            <Text style={styles.label}>Auto Suggestions</Text>
-          </View>
-          <Switch value={autoSuggestions} onValueChange={setAutoSuggestions} trackColor={{ false: '#333', true: 'rgba(14,165,233,0.5)' }} thumbColor="#fff" />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Voice Mode</Text>
-        
-        <TouchableOpacity
-          style={[styles.option, voiceMode === 'hermes' && styles.optionActive]}
-          onPress={() => setVoiceMode('hermes')}
-        >
-          <FontAwesome name="microphone" size={18} color="#ffffff" style={styles.optionIcon} />
-          <Text style={[styles.optionText, voiceMode === 'hermes' && styles.optionTextActive]}>Hermes (Local)</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.option, voiceMode === 'cloud' && styles.optionActive]}
-          onPress={() => setVoiceMode('cloud')}
-        >
-          <FontAwesome name="cloud" size={18} color="#ffffff" style={styles.optionIcon} />
-          <Text style={[styles.optionText, voiceMode === 'cloud' && styles.optionTextActive]}>Cloud AI</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <View style={styles.infoCard}>
-          <FontAwesome name="info-circle" size={20} color="#ffffff" style={styles.infoIcon} />
-          <Text style={styles.infoText}>AngelOs uses AI to help with:</Text>
-          <Text style={styles.bulletText}>• Booking appointments</Text>
-          <Text style={styles.bulletText}>• Client messaging</Text>
-          <Text style={styles.bulletText}>• Content creation</Text>
-          <Text style={styles.bulletText}>• Business insights</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <FontAwesome name="check" size={18} color="#ffffff" style={styles.saveIcon} />
-        <Text style={styles.saveButtonText}>Save Settings</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+const ROLE_COPY: Array<{ key: AssistantRoleKey; label: string; description: string }> = [
+  { key:'personal_assistant', label:'Personal Assistant', description:'Organizes your day, priorities and everyday work.' }, { key:'social_media_marketer', label:'Social Media Marketer', description:'Guides growth strategy and posting decisions.' },
+  { key:'content_creator', label:'Content Creator', description:'Creates posts, Reels, Stories, hooks and captions.' }, { key:'business_manager', label:'Business Manager', description:'Helps with operations, clients and Needs Attention.' },
+  { key:'business_advisor', label:'Business Advisor', description:'Recommends practical priorities, offers and growth moves.' }, { key:'consultant', label:'Consultant', description:'Helps think through deeper business tradeoffs.' }
+];
+export default function AiSettingsScreen() {
+  const [workspaceId,setWorkspaceId]=useState<string|null>(null); const [profile,setProfile]=useState<AssistantProfile|null>(null); const [roles,setRoles]=useState<AssistantRole[]>([]); const [busy,setBusy]=useState(true);
+  useEffect(()=>{void load();},[]);
+  async function load(){try{const workspace=await getActiveWorkspace();const data=await getAssistantProfile(workspace.id);setWorkspaceId(workspace.id);setProfile(data.profile);setRoles(data.roles);}catch(error){Alert.alert('Could not load AI settings',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
+  const roleMap=useMemo(()=>new Map(roles.map((role)=>[role.role_key,role.enabled])),[roles]);
+  async function saveProfile(patch:Record<string,unknown>){if(!workspaceId||!profile)return;setBusy(true);try{setProfile(await updateAssistantProfile(workspaceId,patch));}catch(error){Alert.alert('Could not save AI setting',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
+  async function toggleRole(key:AssistantRoleKey,enabled:boolean){if(!workspaceId)return;setBusy(true);try{setRoles((await updateAssistantRoles(workspaceId,{[key]:enabled})).roles);}catch(error){Alert.alert('Could not update AI role',error instanceof Error?error.message:'Unknown error');}finally{setBusy(false);}}
+  if(!profile)return <Screen><Card><BodyText>{busy?'Loading AI settings...':'AI settings are unavailable. Check the API, then retry.'}</BodyText><Pressable onPress={()=>{setBusy(true);void load();}}><Text style={styles.toggleTitle}>Retry</Text></Pressable></Card></Screen>;
+  return <Screen>
+    <Pill tone="gold">Your Business Partner</Pill><ScreenTitle>AI Assistant</ScreenTitle><SupportText>Choose how AngelOS communicates and which roles it actively uses.</SupportText>
+    <Card premium><SectionTitle>Assistant profile</SectionTitle><Text style={styles.label}>Name</Text><TextInput defaultValue={profile.display_name} placeholder="Assistant name" placeholderTextColor={ui.colors.secondaryText} style={styles.input} onEndEditing={(event)=>void saveProfile({displayName:event.nativeEvent.text})}/><Text style={styles.label}>Personality</Text><TextInput defaultValue={profile.personality_prompt} placeholder="Warm, calm, concise and practical." placeholderTextColor={ui.colors.secondaryText} multiline style={[styles.input,styles.multiline]} onEndEditing={(event)=>void saveProfile({personalityPrompt:event.nativeEvent.text})}/></Card>
+    <Card><SectionTitle>How much should AngelOS lead?</SectionTitle><SupportText>Balanced keeps guidance proactive while leaving important decisions with you.</SupportText><View style={styles.segmentRow}>{(['low','balanced','high'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({proactivity:value})} style={[styles.segment,profile.proactivity===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
+    <Card><SectionTitle>Active roles</SectionTitle>{ROLE_COPY.map((role)=><View key={role.key} style={styles.toggleRow}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>{role.label}</Text><SupportText>{role.description}</SupportText></View><Switch trackColor={{false:'#3f3f46',true:'#ffffff'}} thumbColor={(roleMap.get(role.key)??true)?'#09090b':'#a1a1aa'} value={roleMap.get(role.key)??true} disabled={busy} onValueChange={(value)=>void toggleRole(role.key,value)}/></View>)}</Card>
+    <Card><SectionTitle>Everyday guidance</SectionTitle><Toggle label="Ask useful follow-up questions" detail="Guides you one step at a time when the next question matters." value={profile.guidance_questions_enabled} onChange={(value)=>void saveProfile({guidanceQuestionsEnabled:value})}/><Toggle label="Explain recommendations" detail="Briefly explains why and what evidence was used." value={profile.explain_recommendations} onChange={(value)=>void saveProfile({explainRecommendations:value})}/></Card>
+    <Card><SectionTitle>Floating AI button</SectionTitle><SupportText>Keep it small, compact or hidden from navigation.</SupportText><View style={styles.segmentRow}>{(['on','compact','off'] as const).map((value)=><Pressable key={value} onPress={()=>void saveProfile({floatingButtonMode:value})} style={[styles.segment,profile.floating_button_mode===value&&styles.selected]}><Text style={styles.segmentText}>{capitalize(value)}</Text></Pressable>)}</View></Card>
+  </Screen>;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 60 },
-  title: { fontSize: 20, fontWeight: '600', color: '#ffffff' },
-  placeholder: { width: 24 },
-  section: { padding: 16, marginTop: 8 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 12, letterSpacing: 0.5 },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', padding: 16, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  toggleLabel: { flexDirection: 'row', alignItems: 'center' },
-  icon: { marginRight: 10 },
-  label: { fontSize: 14, color: '#ffffff' },
-  option: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', padding: 16, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  optionActive: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)' },
-  optionIcon: { marginRight: 12 },
-  optionText: { fontSize: 14, color: '#ffffff' },
-  optionTextActive: { color: '#ffffff', fontWeight: '600' },
-  infoCard: { backgroundColor: 'rgba(255,255,255,0.08)', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  infoIcon: { marginBottom: 8 },
-  infoText: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
-  bulletText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 6, marginLeft: 8 },
-  saveButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', margin: 16, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-  saveIcon: { marginRight: 8 },
-  saveButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
-});
+function Toggle({label,detail,value,onChange}:{label:string;detail:string;value:boolean;onChange:(value:boolean)=>void}){return <View style={styles.toggleRow}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>{label}</Text><SupportText>{detail}</SupportText></View><Switch trackColor={{false:'#3f3f46',true:'#ffffff'}} thumbColor={value?'#09090b':'#a1a1aa'} value={value} onValueChange={onChange}/></View>}
+function capitalize(value:string){return value[0].toUpperCase()+value.slice(1)}
+const styles=StyleSheet.create({label:{color:ui.colors.secondaryText,fontSize:13,fontWeight:'700'},input:{borderWidth:1,borderColor:ui.colors.border,borderRadius:ui.radius.control,backgroundColor:ui.colors.elevated,color:ui.colors.primaryText,padding:ui.spacing.sm,fontSize:16},multiline:{minHeight:96,textAlignVertical:'top'},segmentRow:{flexDirection:'row',gap:ui.spacing.xs},segment:{flex:1,borderWidth:1,borderColor:ui.colors.border,borderRadius:ui.radius.control,paddingVertical:12,alignItems:'center',backgroundColor:ui.colors.elevated},selected:{borderColor:ui.colors.gold,backgroundColor:ui.colors.softGold},segmentText:{color:ui.colors.primaryText,fontSize:14,fontWeight:'700'},toggleRow:{flexDirection:'row',gap:ui.spacing.sm,alignItems:'center',paddingVertical:ui.spacing.xs,borderBottomWidth:1,borderBottomColor:ui.colors.border},toggleCopy:{flex:1,gap:2},toggleTitle:{color:ui.colors.primaryText,fontSize:16,fontWeight:'700'}});
