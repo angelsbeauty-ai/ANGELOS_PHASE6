@@ -15,3 +15,32 @@ supabase/.temp/
 !**/.env.staging.example
 
 .flow1-hosted/
+
+# IDE and tool noise
+.codex/
+.npmrc
+.vscode/
+.worktrees/
+
+# Build artifacts and temp
+*.bak
+*.staged
+tmp/
+
+eas-*.json
+eas-*.log
+eas-*.txt
+build-errors.txt
+eas-cook-*.log
+eas-cook-*.ps1
+eas-mobile-*.json
+eas-mobile-*.ps1
+eas-root-*.json
+eas-voice-diag.txt
+eas-view-*.txt
+eas-build-*.json
+eas-build-*.txt
+eas-build-list.json
+eas-build-list.txt
+.DS_Store
+tsconfig.json

@@ -1,0 +1,1 @@
+{"version":3,"file":"analytics-provider.js","sourceRoot":"","sources":["../../src/analytics/analytics-provider.ts"],"names":[],"mappings":";;;AAsCA,MAAa,2BAA2B;IACV;IAA5B,YAA4B,QAA6C;QAA7C,aAAQ,GAAR,QAAQ,CAAqC;IAAG,CAAC;IAE7E,KAAK,CAAC,mBAAmB;QACvB,OAAO,IAAI,CAAC;IACd,CAAC;IAED,KAAK,CAAC,qBAAqB;QACzB,OAAO,EAAE,CAAC;IACZ,CAAC;CACF;AAVD,kEAUC"}
