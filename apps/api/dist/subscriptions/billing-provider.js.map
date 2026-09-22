@@ -1,0 +1,1 @@
+{"version":3,"file":"billing-provider.js","sourceRoot":"","sources":["../../src/subscriptions/billing-provider.ts"],"names":[],"mappings":";;;AAMA,MAAa,2BAA2B;IAC7B,IAAI,GAAG,MAAM,CAAC;IACd,UAAU,GAAG,KAAK,CAAC;IAC5B,KAAK,CAAC,cAAc;QAClB,OAAO,EAAE,IAAI,EAAE,gBAAyB,EAAE,OAAO,EAAE,2DAA2D,EAAE,CAAC;IACnH,CAAC;CACF;AAND,kEAMC"}

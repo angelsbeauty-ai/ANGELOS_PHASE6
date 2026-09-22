@@ -63,9 +63,16 @@ export default function MessagesScreen() {
 
     <Card premium>
       <SectionTitle>Receptionist Mode</SectionTitle>
-      <BodyText>Live Meta, LINE and TikTok connections plug into this inbox later. Demo Inbox lets us test the workflow safely now.</BodyText>
+      <BodyText>
+        LINE and Instagram doorways are next. Meta public publish stays closed. Demo Inbox still lets us test the workflow safely.
+      </BodyText>
+      <Link href="/connections" asChild>
+        <Pressable style={styles.actionLink}>
+          <PrimaryActionLabel>Open Connections doorway</PrimaryActionLabel>
+        </Pressable>
+      </Link>
       <Pressable onPress={() => void addDemoInquiry()} style={styles.actionLink}>
-        <PrimaryActionLabel>Create Demo Inquiry</PrimaryActionLabel>
+        <SecondaryActionLabel>Create Demo Inquiry</SecondaryActionLabel>
       </Pressable>
     </Card>
 

@@ -6,9 +6,14 @@ import type { UpdateClientDto } from './dto/update-client.dto';
 import type { CreateClientNoteDto } from './dto/create-note.dto';
 import type { CreateTreatmentDto } from './dto/create-treatment.dto';
 import type { CreateConsentDto } from './dto/create-consent.dto';
+import { CreateFollowupDto } from './dto/create-followup.dto';
+import { AutomationsService } from '../automations/automations.service';
 
 @Injectable()
 export class ClientsService {
+  constructor(
+    private readonly automations: AutomationsService,
+  ) {}
   async list(user: AuthUser, workspaceId: string, search?: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
     let query = supabase
@@ -130,6 +135,19 @@ export class ClientsService {
       created_by: user.id
     }).select('*').single();
     if (error) throw new InternalServerErrorException(error.message);
+
+    // Fire the treatment.recorded event to the automations engine (fire-and-forget, non-blocking)
+    this.automations.handleTreatmentRecorded(user, workspaceId, clientId, {
+      service_name: dto.serviceName.trim(),
+      stage: dto.stage ?? 'first_session',
+      technique: dto.technique?.trim() || null,
+      performed_at: dto.performedAt ?? new Date().toISOString(),
+      notes: dto.notes?.trim() || null,
+    }).catch((e) => {
+      // Log but don't fail the request — the treatment is already saved.
+      console.error('[clients.addTreatment] automations.handleTreatmentRecorded failed:', e);
+    });
+
     return data;
   }
 
@@ -144,6 +162,22 @@ export class ClientsService {
       scope: dto.scope ?? {},
       form_version: dto.formVersion ?? null,
       signed_at: dto.status === 'granted' ? new Date().toISOString() : null,
+      created_by: user.id
+    }).select('*').single();
+    if (error) throw new InternalServerErrorException(error.message);
+    return data;
+  }
+
+  async addFollowup(user: AuthUser, workspaceId: string, clientId: string, dto: CreateFollowupDto) {
+    await this.assertClient(user, workspaceId, clientId);
+    const supabase = createUserSupabaseClient(user.accessToken);
+    const { data, error } = await supabase.from('client_followups').insert({
+      workspace_id: workspaceId,
+      client_id: clientId,
+      reason: dto.reason.trim(),
+      due_at: dto.dueAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      status: dto.status ?? 'open',
+      auto_message_allowed: false,
       created_by: user.id
     }).select('*').single();
     if (error) throw new InternalServerErrorException(error.message);

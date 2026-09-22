@@ -1,216 +1,57 @@
-import { Link, Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Screen } from '../src/components/Screen';
-import {
-  AppTitle,
-  BodyText,
-  Card,
-  Pill,
-  PrimaryActionLabel,
-  Row,
-  SecondaryActionLabel,
-  SectionTitle,
-  StatCard,
-  SupportText,
-  ui
-} from '../src/components/ui';
-import { getSystemHealth, type SystemHealthOverview } from '../src/lib/system-health';
-import { getActiveWorkspace } from '../src/lib/workspace';
-import { supabase } from '../src/lib/supabase';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function HomeScreen() {
-  const [health, setHealth] = useState<SystemHealthOverview | null>(null);
-  const [sessionReady, setSessionReady] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      const signedIn = Boolean(data.session);
-      setIsSignedIn(signedIn);
-      setSessionReady(true);
-      if (signedIn) {
-        void loadHealth();
-      }
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      const signedIn = Boolean(session);
-      setIsSignedIn(signedIn);
-      setSessionReady(true);
-      if (signedIn) {
-        void loadHealth();
-      }
-    });
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-  async function loadHealth() {
-    try { const workspace = await getActiveWorkspace(); setHealth(await getSystemHealth(workspace.id)); }
-    catch { setHealth(null); }
-  }
-  if (!sessionReady) {
-    return <Screen><SupportText>Loading AngelOS...</SupportText></Screen>;
-  }
-  if (!isSignedIn) {
-    return <Redirect href="/login" />;
-  }
-  const attentionCount = health ? health.counts.urgent + health.counts.today + health.counts.later : 0;
+  const router = useRouter();
+
+  const features = [
+    { name: 'Hermes Voice', icon: '🤖', route: '/hermes-voice', color: ['#0ea5e920', '#0ea5e910'] },
+    { name: 'Planner', icon: '📅', route: '/hermes-planner', color: ['#10b98120', '#10b98110'] },
+    { name: 'History', icon: '📋', route: '/hermes-history', color: ['#8b5cf620', '#8b5cf610'] },
+    { name: 'Settings', icon: '⚙️', route: '/hermes-settings', color: ['#64748b20', '#64748b10'] },
+  ];
+
   return (
-    <Screen>
-      <View style={styles.hero}>
-        <Pill tone="gold">Owner Dashboard</Pill>
-        <AppTitle>AngelOS</AppTitle>
-        <SupportText>Clients, bookings, content and system health in one calm place.</SupportText>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>AngelOs</Text>
+        <Text style={styles.subtitle}>AI Operating System</Text>
       </View>
 
-      <View style={styles.statsGrid}>
-        <StatCard label="Appointments" value="Today" detail="Review the day before it starts." />
-        <StatCard label="Attention" value={health ? `${attentionCount}` : '--'} detail={health ? 'Items to review' : 'Check workspace health'} />
+      <View style={styles.grid}>
+        {features.map((feature, i) => (
+          <TouchableOpacity
+            key={i}
+            style={styles.card}
+            onPress={() => router.push(feature.route as any)}
+          >
+            <LinearGradient colors={feature.color} style={styles.cardGradient}>
+              <Text style={styles.cardIcon}>{feature.icon}</Text>
+              <Text style={styles.cardName}>{feature.name}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <Card premium>
-        <View style={styles.cardHeader}>
-          <SectionTitle>AngelOS Assistant</SectionTitle>
-          <Pill>AI ready</Pill>
-        </View>
-        <BodyText>
-          Ask what needs attention, draft a client reply, prepare content, or review today's schedule.
-        </BodyText>
-        <Link href="/ai" asChild>
-          <Pressable style={styles.actionLink}>
-            <PrimaryActionLabel>Ask AngelOS</PrimaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card>
-        <SectionTitle>Needs Attention</SectionTitle>
-        <BodyText>
-          {health
-            ? attentionCount
-              ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need review before AngelOS acts.`
-              : 'Nothing currently needs your attention.'
-            : 'Run a System Health check to verify your workspace.'}
-        </BodyText>
-        <Link href="/system-health" asChild>
-          <Pressable style={styles.actionLink}>
-            <SecondaryActionLabel>Open System Health</SecondaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card premium>
-        <View style={styles.cardHeader}>
-          <SectionTitle>Approvals</SectionTitle>
-          <Pill tone="gold">Owner only</Pill>
-        </View>
-        <BodyText>
-          Review client replies, content and bookings before AngelOS sends or publishes anything.
-        </BodyText>
-        <Link href="/approvals" asChild>
-          <Pressable style={styles.actionLink}>
-            <PrimaryActionLabel>Open Approvals</PrimaryActionLabel>
-          </Pressable>
-        </Link>
-      </Card>
-
-      <Card>
-        <SectionTitle>Run Today</SectionTitle>
-        <View>
-          <Link href="/calendar" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Calendar</BodyText>
-                <SupportText>Bookings, models, classes and conflicts</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/clients" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Clients</BodyText>
-                <SupportText>Profiles, notes and treatment history</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/messages" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Messages</BodyText>
-                <SupportText>Drafts, translation and booking handoff</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-          <Link href="/content" asChild>
-            <Pressable style={styles.rowLink}>
-              <Row accessory={<Text style={styles.chevron}>{'>'}</Text>}>
-                <BodyText>Content</BodyText>
-                <SupportText>AI recommendation, approval and publishing</SupportText>
-              </Row>
-            </Pressable>
-          </Link>
-        </View>
-      </Card>
-
-      <Card>
-        <SectionTitle>Tools & Controls</SectionTitle>
-        <View style={styles.moreGrid}>
-          <Link href="/media" style={styles.moreLink}>Media</Link>
-          <Link href="/analytics" style={styles.moreLink}>Analytics</Link>
-          <Link href="/finance" style={styles.moreLink}>Finance</Link>
-          <Link href="/automations" style={styles.moreLink}>Automations</Link>
-          <Link href="/subscription" style={styles.moreLink}>Subscription</Link>
-          <Link href="/beta-feedback" style={styles.moreLink}>Feedback</Link>
-          <Link href="/settings" style={styles.moreLink}>Settings</Link>
-        </View>
-      </Card>
-    </Screen>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Built for Angels Beauty Academy</Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    gap: ui.spacing.xs
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: ui.spacing.sm
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ui.spacing.sm
-  },
-  actionLink: {
-    marginTop: ui.spacing.xs,
-  },
-  rowLink: {
-  },
-  chevron: {
-    color: ui.colors.gold,
-    fontSize: 26,
-    lineHeight: 28
-  },
-  moreGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ui.spacing.xs
-  },
-  moreLink: {
-    minHeight: 40,
-    paddingVertical: 10,
-    paddingHorizontal: ui.spacing.sm,
-    borderRadius: ui.radius.pill,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    color: ui.colors.primaryText,
-    backgroundColor: ui.colors.elevated,
-    fontSize: 14,
-    fontWeight: '700',
-  }
+  container: { flexGrow: 1, backgroundColor: '#0f172a' },
+  header: { padding: 40, paddingTop: 60, alignItems: 'center' },
+  title: { fontSize: 36, fontWeight: '700', color: '#f1f5f9', letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: '#94a3b8', marginTop: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 16 },
+  card: { width: '48%', aspectRatio: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#334155' },
+  cardGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  cardIcon: { fontSize: 42, marginBottom: 12 },
+  cardName: { fontSize: 15, fontWeight: '600', color: '#f1f5f9', textAlign: 'center' },
+  footer: { padding: 24, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1e293b', marginTop: 16 },
+  footerText: { fontSize: 12, color: '#64748b', textAlign: 'center' },
 });

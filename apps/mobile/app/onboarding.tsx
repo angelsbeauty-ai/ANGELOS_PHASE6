@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../src/components/Screen';
 import { BodyText, Card, Pill, PrimaryActionLabel, ScreenTitle, SectionTitle, SupportText, ui } from '../src/components/ui';
@@ -8,6 +9,7 @@ import { getBetaAccess, redeemBetaInvite, type BetaAccess } from '../src/lib/bet
 type Workspace = { id: string; name: string; timezone: string; currency: string; locale: string };
 
 export default function OnboardingScreen() {
+  const router = useRouter();
   const device = useMemo(() => {
     const options = Intl.DateTimeFormat().resolvedOptions();
     return { locale: options.locale, timezone: options.timeZone };
@@ -34,7 +36,7 @@ export default function OnboardingScreen() {
     setSaving(true);
     try {
       const workspace = await apiFetch<Workspace>('/workspaces', { method: 'POST', body: JSON.stringify({ name: name.trim(), businessType: 'beauty', timezone: device.timezone, currency: nextCurrency, locale: device.locale }) });
-      Alert.alert('Workspace created', `${workspace.name} is ready. Next, add the services you actually offer.`);
+      Alert.alert('Workspace created', workspace.name + ' is ready. Next: add services and open hours so bookings can work.', [{ text: 'Set up services', onPress: () => router.replace('/services') }, { text: 'Later', style: 'cancel' }]);
     } catch (error) { Alert.alert('Could not create workspace', error instanceof Error ? error.message : 'Unknown error'); }
     finally { setSaving(false); }
   }
@@ -45,7 +47,7 @@ export default function OnboardingScreen() {
     <ScreenTitle>Welcome to AngelOS</ScreenTitle>
     <SupportText>A calm operating system for your beauty business. Your first workspace stays private and owner-controlled.</SupportText>
     <Card premium><SectionTitle>Enter your private invite</SectionTitle><BodyText>Create your account first, then use the invite shared with you by the Founder.</BodyText><View style={styles.field}><Text style={styles.label}>Beta invite</Text><TextInput value={invite} onChangeText={setInvite} placeholder="Private invite token" placeholderTextColor={ui.colors.secondaryText} autoCapitalize="none" autoCorrect={false} style={styles.input}/></View><Pressable disabled={saving || !invite.trim()} onPress={() => void redeem()} style={({ pressed }) => [styles.action, (pressed || saving || !invite.trim()) && styles.muted]}><PrimaryActionLabel>{saving ? 'Checking...' : 'Verify Invite'}</PrimaryActionLabel></Pressable></Card>
-    <Card><SectionTitle>What setup asks for</SectionTitle><SupportText>Only your business name and regional settings. Calendar, contacts, photos and messaging permissions are requested later—only when you use those features.</SupportText></Card>
+    <Card><SectionTitle>What setup asks for</SectionTitle><SupportText>Only your business name and regional settings. Calendar, contacts, photos and messaging permissions are requested later窶俳nly when you use those features.</SupportText></Card>
   </View></Screen>;
 
   return <Screen><View style={styles.stack}>

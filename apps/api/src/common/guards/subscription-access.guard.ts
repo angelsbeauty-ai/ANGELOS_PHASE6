@@ -9,6 +9,12 @@ export class SubscriptionAccessGuard implements CanActivate {
     if (['GET','HEAD','OPTIONS'].includes(method)) return true;
     const workspaceId = request.params?.workspaceId as string | undefined;
     if (!workspaceId) return true;
+    // Staging write bypass: founder/pilot staging must not block CRM writes when a trial lapses into read_only.
+    const railwayEnv = String(process.env.RAILWAY_ENVIRONMENT ?? process.env.RAILWAY_ENVIRONMENT_NAME ?? '').toLowerCase();
+    const nodeEnv = String(process.env.NODE_ENV ?? '').toLowerCase();
+    if (railwayEnv === 'staging' || nodeEnv === 'staging' || process.env.STAGING_ALLOW_WRITES === 'true') {
+      return true;
+    }
     // Path only: originalUrl carries the query string, so a request with ?x=/subscription used to
     // slip past the read-only/expired gate entirely.
     const path = String(request.originalUrl ?? request.url ?? '').split('?')[0];

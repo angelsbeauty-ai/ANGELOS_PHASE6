@@ -13,7 +13,16 @@ import {
   SupportText,
   ui
 } from '../../src/components/ui';
-import { addClientNote, addTreatment, getClient, recordConsent, updateClient, type ClientDetail, type ConsentType } from '../../src/lib/clients';
+import {
+  addClientNote,
+  addFollowup,
+  addTreatment,
+  getClient,
+  recordConsent,
+  updateClient,
+  type ClientDetail,
+  type ConsentType,
+} from '../../src/lib/clients';
 import { recordFinanceEntry } from '../../src/lib/finance';
 import { getActiveWorkspace } from '../../src/lib/workspace';
 

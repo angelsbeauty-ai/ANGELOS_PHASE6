@@ -5,14 +5,14 @@
     "scheme": "angelos",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "plugins": [
       "expo-router",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow AngelOS to access photos and videos only when you choose business media to import.",
-          "cameraPermission": "Allow AngelOS to use the camera only when you choose to capture business media.",
+          "photosPermission": "Allow Angelos to access photos and videos.",
+          "cameraPermission": "Allow Angelos to use the camera.",
           "microphonePermission": false
         }
       ]
@@ -22,10 +22,18 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.angelos.app"
+      "bundleIdentifier": "com.angelos.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.angelos.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "adf82555-9894-4426-87e7-5d84b662f4ac"
+      }
     }
   }
 }

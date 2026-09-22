@@ -1,15 +1,21 @@
-.git
 node_modules
-**/node_modules
-# Allow root dist/ (for Railway CMD via postbuild) — this is a legitimate entry point
-!dist
-!dist/*
-# Exclude build output dist dirs (apps/*/dist, packages/*/dist, etc.)
-**/*/dist
-**/*/dist/*
-# Secrets
-**/.env
-**/.env.*
+!apps/api/node_modules
+tmp
+.git
+.worktrees
+.vscode
+.codex
+.scratch_tmp
+*.log
+*.tsbuildinfo
+.env
+.env.*
 !.env.example
-!**/.env.example
+!.env.staging.example
 *.zip
+*.tar.gz
+__pycache__
+*.pyc
+coverage
+.nyc_output
+.eslintcache

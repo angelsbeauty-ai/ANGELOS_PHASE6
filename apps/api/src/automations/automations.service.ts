@@ -1,12 +1,14 @@
 import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
-import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
+import { createUserSupabaseClient, createServiceSupabaseClient } from '../config/supabase';
 import type { UpdateAutomationRuleDto } from './dto/update-automation-rule.dto';
 
 const DEFAULT_RULES = [
   { name: 'Booking confirmation', category: 'appointment', trigger_type: 'appointment_confirmed', action_type: 'owner_prompt', delay_minutes: 0, routine_category: 'booking_confirmation', action_config: { messageTemplate: 'Confirm the appointment and prepare the approved confirmation message.' } },
   { name: 'Aftercare follow-up', category: 'aftercare', trigger_type: 'appointment_completed', action_type: 'create_followup', delay_minutes: 60, routine_category: 'aftercare', action_config: { reason: 'Send approved aftercare and check that the client received it.' } },
-  { name: 'Healing follow-up', category: 'followup', trigger_type: 'appointment_completed', action_type: 'create_followup', delay_minutes: 10080, routine_category: 'follow_up', action_config: { reason: 'Check healing progress and follow-up needs.' } }
+  { name: 'Healing follow-up', category: 'followup', trigger_type: 'appointment_completed', action_type: 'create_followup', delay_minutes: 10080, routine_category: 'follow_up', action_config: { reason: 'Check healing progress and follow-up needs.' } },
+  { name: 'Treatment recorded — aftercare', category: 'aftercare', trigger_type: 'treatment_recorded', action_type: 'create_followup', delay_minutes: 0, routine_category: 'aftercare', action_config: { reason: 'Client just had a treatment recorded. Send approved aftercare and check they received it.' } },
+  { name: 'Treatment recorded — follow-up', category: 'followup', trigger_type: 'treatment_recorded', action_type: 'create_followup', delay_minutes: 0, routine_category: 'follow_up', action_config: { reason: 'Treatment recorded. Flag for owner follow-up if the client has open needs.' } },
 ];
 
 @Injectable()
@@ -71,8 +73,60 @@ export class AutomationsService {
     return jobs;
   }
 
+  async handleTreatmentRecorded(user: AuthUser, workspaceId: string, clientId: string, treatmentData: Record<string, unknown>) {
+    const supabase = createUserSupabaseClient(user.accessToken);
+
+    const eventId = crypto.randomUUID();
+
+    // Audit log entry — best-effort, never fail the request if the table is missing.
+    try {
+      await supabase
+        .from('automation_events')
+        .insert({
+          id: eventId,
+          workspace_id: workspaceId,
+          event_type: 'treatment_recorded',
+          client_id: clientId,
+          payload: treatmentData,
+          created_by: user.id,
+        })
+        .select('id')
+        .single();
+    } catch {
+      /* table may not exist yet; the trigger still fires regardless */
+    }
+
+    const [{ data: client, error: clientError }, { data: rules, error: rulesError }] = await Promise.all([
+      supabase.from('clients').select('id,display_name').eq('workspace_id', workspaceId).eq('id', clientId).single(),
+      supabase.from('automation_rules').select('*').eq('workspace_id', workspaceId).eq('trigger_type', 'treatment_recorded').eq('enabled', true),
+    ]);
+    if (clientError || !client) throw new NotFoundException('Client not found');
+    if (rulesError) throw new InternalServerErrorException(rulesError.message);
+
+    const jobs = [];
+    for (const rule of rules ?? []) {
+      const scheduledFor = new Date(Date.now() + Number((rule as any).delay_minutes) * 60000).toISOString();
+      const idempotencyKey = `treatment_recorded:${clientId}:${(rule as any).id}`;
+      const { data, error } = await supabase.from('automation_jobs').insert({
+        workspace_id: workspaceId,
+        rule_id: (rule as any).id,
+        client_id: clientId,
+        appointment_id: null,
+        scheduled_for: scheduledFor,
+        idempotency_key: idempotencyKey,
+        created_by: user.id,
+        evidence: { event_type: 'treatment_recorded', event_id: eventId, service_name: (treatmentData?.service_name as string) || null },
+      }).select('*').single();
+      if (error) {
+        if ((error as any).code === '23505') continue;
+        throw new InternalServerErrorException(error.message);
+      }
+      jobs.push(data);
+    }
+    return { client, jobs };
+  }
+
   async cancelAppointmentJobs(user: AuthUser, workspaceId: string, appointmentId: string) {
-    // Authorization is established by the authenticated booking mutation. Job state is backend-controlled.
     const userClient = createUserSupabaseClient(user.accessToken);
     const { data: appointment, error: appointmentError } = await userClient.from('appointments').select('id').eq('workspace_id', workspaceId).eq('id', appointmentId).single();
     if (appointmentError || !appointment) throw new NotFoundException('Appointment not found');
@@ -82,7 +136,6 @@ export class AutomationsService {
   }
 
   async processDue(user: AuthUser, workspaceId: string, limit = 20) {
-    // Service-role execution must first prove the caller belongs to the requested workspace.
     const userClient = createUserSupabaseClient(user.accessToken);
     const { data: workspace, error: workspaceError } = await userClient.from('workspaces').select('id').eq('id', workspaceId).single();
     if (workspaceError || !workspace) throw new NotFoundException('Workspace not found');

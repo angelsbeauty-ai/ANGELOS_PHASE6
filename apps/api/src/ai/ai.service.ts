@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user';
 import { createServiceSupabaseClient, createUserSupabaseClient } from '../config/supabase';
 import { planSafeAssistantAction } from './action-planner';
@@ -10,21 +10,69 @@ import type { CreateMemoryDto } from './dto/create-memory.dto';
 import type { SendAiMessageDto } from './dto/send-ai-message.dto';
 import type { UpdateAssistantProfileDto } from './dto/update-assistant-profile.dto';
 import type { UpdateAssistantRolesDto } from './dto/update-assistant-roles.dto';
+import { SendVoiceMessageDto } from './dto/send-voice-message.dto';
+
+export type SendVoiceResult =
+  | { transcript: string; reply: string }
+  | { error: string; status: number };
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
+
   constructor(private readonly provider: AiProviderService) {}
 
   async getProfile(user: AuthUser, workspaceId: string) {
     const supabase = createUserSupabaseClient(user.accessToken);
     const [{ data: profile, error: profileError }, { data: roles, error: rolesError }] = await Promise.all([
-      supabase.from('ai_assistant_profiles').select('*').eq('workspace_id', workspaceId).single(),
+      supabase.from('ai_assistant_profiles').select('*').eq('workspace_id', workspaceId).maybeSingle(),
       supabase.from('ai_assistant_roles').select('role_key,enabled').eq('workspace_id', workspaceId).order('role_key')
     ]);
 
-    if (profileError || !profile) throw new NotFoundException('Assistant profile not found for workspace');
     if (rolesError) throw new InternalServerErrorException(rolesError.message);
-    return { profile, roles: roles ?? [] };
+
+    if (profileError) throw new InternalServerErrorException(profileError.message);
+    if (profile) return { profile, roles: roles ?? [] };
+
+    const { data: created, error: createError } = await supabase
+      .from('ai_assistant_profiles')
+      .insert({
+        workspace_id: workspaceId,
+        display_name: 'AngelOS',
+        personality_prompt: 'Warm, calm, concise and practical. Never invents prices, hours or medical advice.'
+      })
+      .select('*')
+      .single();
+    if (createError || !created) {
+      throw new InternalServerErrorException(createError?.message ?? 'Could not create assistant profile');
+    }
+
+    const roleKeys = [
+      'personal_assistant',
+      'social_media_marketer',
+      'content_creator',
+      'business_manager',
+      'business_advisor',
+      'consultant'
+    ];
+    const { error: roleError } = await supabase.from('ai_assistant_roles').upsert(
+      roleKeys.map((role_key) => ({
+        workspace_id: workspaceId,
+        role_key,
+        enabled: true,
+        updated_at: new Date().toISOString()
+      })),
+      { onConflict: 'workspace_id,role_key' }
+    );
+    if (roleError) throw new InternalServerErrorException(roleError.message);
+
+    const { data: seededRoles, error: seededRolesError } = await supabase
+      .from('ai_assistant_roles')
+      .select('role_key,enabled')
+      .eq('workspace_id', workspaceId)
+      .order('role_key');
+    if (seededRolesError) throw new InternalServerErrorException(seededRolesError.message);
+    return { profile: created, roles: seededRoles ?? [] };
   }
 
   async updateProfile(user: AuthUser, workspaceId: string, dto: UpdateAssistantProfileDto) {
@@ -277,7 +325,6 @@ export class AiService {
         throw new Error(`Unsupported action: ${action.action_key}`);
       }
 
-      // Verification is a fresh read after mutation, not an assumption based on the write call.
       const verification = await this.verifyAction(user, workspaceId, action.action_key, action.input);
       if (!verification.verified) {
         throw new Error('Action mutation could not be verified');
@@ -351,6 +398,39 @@ export class AiService {
       .order('created_at', { ascending: false });
     if (error) throw new InternalServerErrorException(error.message);
     return data ?? [];
+  }
+
+  async sendVoice(
+    _user: AuthUser,
+    _workspaceId: string,
+    dto: SendVoiceMessageDto,
+  ): Promise<SendVoiceResult> {
+    try {
+      const base64 = dto.audioBase64.trim();
+      if (!base64 || base64.length < 100) {
+        return { error: 'Audio too short', status: 400 };
+      }
+
+      // STT via Supabase Edge Function (ai-agent-voice) is not deployed yet.
+      // Accept the voice upload so the mobile app can keep talking to Hermes;
+      // the reply tells the user transcription is pending.
+      this.logger.warn(
+        'ai-agent-voice Edge Function is not deployed — transcription pending. ' +
+          `audio bytes received: ${base64.length}`,
+      );
+
+      return {
+        transcript: '',
+        reply:
+          '🎤 Voice received. Transcription is not wired up on the server yet — ' +
+          "the audio was recorded but I couldn't turn it into text. Try typing the " +
+          'treatment / note instead for now, or wait for the voice pipeline to be deployed.',
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Voice endpoint error';
+      this.logger.error(`sendVoice failed: ${message}`);
+      return { error: message, status: 500 };
+    }
   }
 
   private async loadAuthorizedContextFacts(

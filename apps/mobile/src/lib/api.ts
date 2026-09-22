@@ -10,18 +10,34 @@ export class ApiError extends Error {
   }
 }
 
+const API_TIMEOUT_MS = 5000;
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
 
-  const response = await fetch(`${apiUrl}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {})
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {})
+      }
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError(0, null, 'Request timed out. Check your connection and try again.');
     }
-  });
+    throw error;
+  }
+  clearTimeout(timeoutId);
 
   const raw = await response.text();
   let payload: unknown = raw;

@@ -2,10 +2,10 @@ import type { PropsWithChildren } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { colors, spacing } from '../design/theme';
 
-export function Screen({ children }: PropsWithChildren) {
+export function Screen({ children, style }: PropsWithChildren<{ style?: object }>) {
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, style]}>
         <View style={styles.stack}>{children}</View>
       </ScrollView>
     </SafeAreaView>

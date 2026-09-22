@@ -8,11 +8,13 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { CreateClientNoteDto } from './dto/create-note.dto';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { CreateConsentDto } from './dto/create-consent.dto';
+import { CreateFollowupDto } from './dto/create-followup.dto';
+import { AutomationsService } from '../automations/automations.service';
 
 @Controller('workspaces/:workspaceId/clients')
 @UseGuards(SupabaseAuthGuard)
 export class ClientsController {
-  constructor(private readonly clients: ClientsService) {}
+  constructor(private readonly clients: ClientsService, private readonly automations: AutomationsService) {}
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Query('search') search?: string) {
@@ -47,5 +49,10 @@ export class ClientsController {
   @Post(':clientId/consents')
   addConsent(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('clientId') clientId: string, @Body() dto: CreateConsentDto) {
     return this.clients.addConsent(user, workspaceId, clientId, dto);
+  }
+
+  @Post(':clientId/followups')
+  addFollowup(@CurrentUser() user: AuthUser, @Param('workspaceId') workspaceId: string, @Param('clientId') clientId: string, @Body() dto: CreateFollowupDto) {
+    return this.clients.addFollowup(user, workspaceId, clientId, dto);
   }
 }
