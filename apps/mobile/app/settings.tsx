@@ -15,6 +15,12 @@ const areas = [
   { href: '/system-health', title: 'System Health', detail: 'Needs Attention and emergency controls' }
 ] as const;
 
+const legal = [
+  { href: '/privacy', title: 'Privacy Policy', detail: 'What AngelOS stores and what it does not sell' },
+  { href: '/terms', title: 'Terms of Use', detail: 'Owner workspace, student invites, and approvals' },
+  { href: '/delete-account', title: 'Delete my account', detail: 'Request deletion of this login and workspace data' }
+] as const;
+
 export default function SettingsScreen() {
   const [email, setEmail] = useState<string | null>(null);
   const [isFounder, setIsFounder] = useState(false);
@@ -44,6 +50,7 @@ export default function SettingsScreen() {
     <Card premium><SectionTitle>Calm by default</SectionTitle><BodyText>Business-changing actions still follow approval and safety rules. Settings shape your experience without weakening workspace protection.</BodyText></Card>
     <Card><SectionTitle>Workspace settings</SectionTitle><View>{areas.map((area) => <Link key={area.href} href={area.href} asChild><Pressable><Row accessory={<Text style={styles.chevron}>{'>'}</Text>}><BodyText>{area.title}</BodyText><SupportText>{area.detail}</SupportText></Row></Pressable></Link>)}</View></Card>
     {isFounder ? <Card><SectionTitle>Founder controls</SectionTitle><Link href="/founder-admin" asChild><Pressable><Row accessory={<Text style={styles.chevron}>{'>'}</Text>}><BodyText>Founder Control Center</BodyText><SupportText>Platform rollout, beta access and launch safety controls</SupportText></Row></Pressable></Link></Card> : null}
+    <Card><SectionTitle>Legal</SectionTitle><View>{legal.map((area) => <Link key={area.href} href={area.href} asChild><Pressable><Row accessory={<Text style={styles.chevron}>{'>'}</Text>}><BodyText>{area.title}</BodyText><SupportText>{area.detail}</SupportText></Row></Pressable></Link>)}</View></Card>
     <Card><SectionTitle>Account</SectionTitle><BodyText>{email ?? 'Signed in on this device'}</BodyText><Pressable onPress={() => void signOut()} style={styles.signOut}><Text style={styles.signOutText}>Sign out</Text></Pressable></Card>
   </Screen>;
 }
